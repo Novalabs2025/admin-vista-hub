@@ -55,7 +55,7 @@ const AgentManagementTable = () => {
         const profilesById = new Map(profiles?.map(p => [p.id, p]));
 
         const statusMap = {
-          verified: 'Approved',
+          approved: 'Approved',
           pending: 'Pending',
           rejected: 'Rejected',
         } as const;
@@ -69,8 +69,8 @@ const AgentManagementTable = () => {
             businessName: profile?.full_name || 'N/A',
             contactName: profile?.full_name || 'N/A',
             phone: profile?.phone_number || 'N/A',
-            location: 'N/A',
-            locationFocus: 'N/A',
+            location: profile?.location || 'N/A',
+            locationFocus: profile?.location_focus || 'N/A',
             status: statusMap[statusKey] || 'Pending',
             documents: {
               cacCert: 'missing',

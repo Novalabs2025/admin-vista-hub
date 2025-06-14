@@ -1,5 +1,6 @@
+
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
 
 export type FetchedAgent = {
   id: string; // user_id from db
@@ -58,12 +60,18 @@ const DocumentDisplay = ({ name, status }: { name: string; status: 'verified' | 
     </div>
 }
 
-const AgentActions = ({ agent, onAction }: { agent: FetchedAgent; onAction: (agent: FetchedAgent) => void }) => {
+const AgentActions = ({ agent, onAction, onApprove, onReject }: { 
+    agent: FetchedAgent; 
+    onAction: (agent: FetchedAgent) => void;
+    onApprove: (agent: FetchedAgent) => void;
+    onReject: (agent: FetchedAgent) => void;
+}) => {
     if (agent.status === 'Pending') {
         return (
             <div className="flex gap-2">
-                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => onAction(agent)}>Approve</Button>
-                <Button size="sm" variant="destructive" onClick={() => onAction(agent)}>Reject</Button>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => onApprove(agent)}>Approve</Button>
+                <Button size="sm" variant="destructive" onClick={() => onReject(agent)}>Reject</Button>
+                <Button size="sm" variant="outline" onClick={() => onAction(agent)}><Eye size={14} /></Button>
             </div>
         );
     }
@@ -88,6 +96,8 @@ const AgentActions = ({ agent, onAction }: { agent: FetchedAgent; onAction: (age
 const AgentVerificationTable = () => {
   const [selectedAgent, setSelectedAgent] = React.useState<FetchedAgent | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: agents, isLoading } = useQuery({
     queryKey: ['agentsForVerification'],
@@ -112,7 +122,7 @@ const AgentVerificationTable = () => {
       const profilesById = new Map(profiles?.map(p => [p.id, p]));
 
       const statusMap = {
-        verified: 'Approved',
+        approved: 'Approved',
         pending: 'Pending',
         rejected: 'Rejected',
       } as const;
@@ -126,8 +136,8 @@ const AgentVerificationTable = () => {
           businessName: profile?.full_name || 'N/A',
           contactName: profile?.full_name || 'N/A',
           phone: profile?.phone_number || 'N/A',
-          location: 'N/A',
-          locationFocus: 'N/A',
+          location: profile?.location || 'N/A',
+          locationFocus: profile?.location_focus || 'N/A',
           status: statusMap[statusKey] || 'Pending',
           documents: {
             cacCert: 'missing',
@@ -138,6 +148,39 @@ const AgentVerificationTable = () => {
       });
     }
   });
+
+  const updateAgentStatusMutation = useMutation({
+    mutationFn: async ({ agentId, status }: { agentId: string, status: 'approved' | 'rejected' }) => {
+      const { error } = await supabase
+        .from('agent_verifications')
+        .update({ status })
+        .eq('user_id', agentId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agentsForVerification'] });
+      queryClient.invalidateQueries({ queryKey: ['allAgents'] });
+      toast({
+        title: "Agent status updated",
+        description: "The agent's status has been successfully updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error updating status",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleApproveAgent = (agent: FetchedAgent) => {
+    updateAgentStatusMutation.mutate({ agentId: agent.id, status: 'approved' });
+  };
+
+  const handleRejectAgent = (agent: FetchedAgent) => {
+    updateAgentStatusMutation.mutate({ agentId: agent.id, status: 'rejected' });
+  };
 
   const filteredAgents = (agents || []).filter(agent =>
     agent.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -208,7 +251,12 @@ const AgentVerificationTable = () => {
                         </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                        <AgentActions agent={agent} onAction={setSelectedAgent} />
+                        <AgentActions 
+                            agent={agent} 
+                            onAction={setSelectedAgent}
+                            onApprove={handleApproveAgent}
+                            onReject={handleRejectAgent}
+                        />
                     </TableCell>
                   </TableRow>
                 ))
