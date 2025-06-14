@@ -36,9 +36,9 @@ export type FetchedAgent = {
   locationFocus: string;
   status: 'Approved' | 'Pending' | 'Rejected';
   documents: {
-    cacCert: 'verified' | 'missing' | 'pending';
-    idCard: 'verified' | 'missing' | 'pending';
-    businessLicense: 'verified' | 'missing' | 'pending';
+    cacCert: { status: 'verified' | 'missing' | 'pending'; url: string | null };
+    idCard: { status: 'verified' | 'missing' | 'pending'; url: string | null };
+    businessLicense: { status: 'verified' | 'missing' | 'pending'; url: string | null };
   };
 };
 
@@ -60,19 +60,28 @@ const DocumentDisplay = ({ name, status }: { name: string; status: 'verified' | 
     </div>
 }
 
-const AgentActions = ({ agent, onAction, onApprove, onReject }: { 
+const DocumentLink = ({ name, url, status }: { name: string, url: string | null, status: string }) => (
+    <div className="flex justify-between items-center py-1">
+        <span className="text-sm text-gray-700">{name}</span>
+        {url ? (
+            <Button asChild variant="link" size="sm" className="p-0 h-auto">
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                    View Document
+                </a>
+            </Button>
+        ) : (
+            <Badge variant="outline" className="text-xs">{status}</Badge>
+        )}
+    </div>
+);
+
+const AgentActions = ({ agent, onAction }: { 
     agent: FetchedAgent; 
     onAction: (agent: FetchedAgent) => void;
-    onApprove: (agent: FetchedAgent) => void;
-    onReject: (agent: FetchedAgent) => void;
 }) => {
     if (agent.status === 'Pending') {
         return (
-            <div className="flex gap-2">
-                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => onApprove(agent)}>Approve</Button>
-                <Button size="sm" variant="destructive" onClick={() => onReject(agent)}>Reject</Button>
-                <Button size="sm" variant="outline" onClick={() => onAction(agent)}><Eye size={14} /></Button>
-            </div>
+            <Button size="sm" variant="outline" onClick={() => onAction(agent)}><Eye size={14} className="mr-2"/> Review</Button>
         );
     }
     if (agent.status === 'Approved') {
@@ -140,9 +149,15 @@ const AgentVerificationTable = () => {
           locationFocus: profile?.location_focus || 'N/A',
           status: statusMap[statusKey] || 'Pending',
           documents: {
-            cacCert: 'missing',
-            idCard: verification.id_document_url ? 'verified' : 'missing',
-            businessLicense: verification.license_document_url ? 'verified' : 'missing',
+            cacCert: { status: 'missing', url: null },
+            idCard: { 
+                status: verification.id_document_url ? 'verified' : 'missing', 
+                url: verification.id_document_url
+            },
+            businessLicense: { 
+                status: verification.license_document_url ? 'verified' : 'missing',
+                url: verification.license_document_url
+            },
           },
         };
       });
@@ -150,7 +165,7 @@ const AgentVerificationTable = () => {
   });
 
   const updateAgentStatusMutation = useMutation({
-    mutationFn: async ({ agentId, status }: { agentId: string, status: 'approved' | 'rejected' }) => {
+    mutationFn: async ({ agentId, status }: { agentId: string, status: 'approved' | 'rejected' | 'pending' }) => {
       const { error } = await supabase
         .from('agent_verifications')
         .update({ status })
@@ -180,6 +195,10 @@ const AgentVerificationTable = () => {
 
   const handleRejectAgent = (agent: FetchedAgent) => {
     updateAgentStatusMutation.mutate({ agentId: agent.id, status: 'rejected' });
+  };
+
+  const handleSetToPending = (agent: FetchedAgent) => {
+    updateAgentStatusMutation.mutate({ agentId: agent.id, status: 'pending' });
   };
 
   const filteredAgents = (agents || []).filter(agent =>
@@ -239,9 +258,9 @@ const AgentVerificationTable = () => {
                     </TableCell>
                     <TableCell>
                         <div className="flex flex-col gap-1.5">
-                            <DocumentDisplay name="CAC Cert" status={agent.documents.cacCert} />
-                            <DocumentDisplay name="ID Card" status={agent.documents.idCard} />
-                            <DocumentDisplay name="Business License" status={agent.documents.businessLicense} />
+                            <DocumentDisplay name="CAC Cert" status={agent.documents.cacCert.status} />
+                            <DocumentDisplay name="ID Card" status={agent.documents.idCard.status} />
+                            <DocumentDisplay name="Business License" status={agent.documents.businessLicense.status} />
                         </div>
                     </TableCell>
                     <TableCell>
@@ -254,8 +273,6 @@ const AgentVerificationTable = () => {
                         <AgentActions 
                             agent={agent} 
                             onAction={setSelectedAgent}
-                            onApprove={handleApproveAgent}
-                            onReject={handleRejectAgent}
                         />
                     </TableCell>
                   </TableRow>
@@ -266,11 +283,11 @@ const AgentVerificationTable = () => {
         </CardContent>
       </Card>
       <Dialog open={!!selectedAgent} onOpenChange={(isOpen) => { if (!isOpen) setSelectedAgent(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Agent Details</DialogTitle>
+            <DialogTitle>Agent Details: {selectedAgent?.businessName}</DialogTitle>
             <DialogDescription>
-              Review the details for {selectedAgent?.businessName}.
+              Review the agent's details and documents before taking action.
             </DialogDescription>
           </DialogHeader>
           {selectedAgent && (
@@ -296,17 +313,27 @@ const AgentVerificationTable = () => {
                   <span className="col-span-2">{selectedAgent.locationFocus}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Documents Status</span>
-                   <div className="flex flex-col gap-1.5 mt-2 pl-4 border-l-2 ml-4">
-                      <DocumentDisplay name="CAC Cert" status={selectedAgent.documents.cacCert} />
-                      <DocumentDisplay name="ID Card" status={selectedAgent.documents.idCard} />
-                      <DocumentDisplay name="Business License" status={selectedAgent.documents.businessLicense} />
+                  <span className="text-sm font-medium text-muted-foreground">Documents</span>
+                   <div className="flex flex-col gap-1 mt-2 pl-4 border-l-2 ml-4">
+                      <DocumentLink name="CAC Cert" url={selectedAgent.documents.cacCert.url} status={selectedAgent.documents.cacCert.status} />
+                      <DocumentLink name="ID Card" url={selectedAgent.documents.idCard.url} status={selectedAgent.documents.idCard.status} />
+                      <DocumentLink name="Business License" url={selectedAgent.documents.businessLicense.url} status={selectedAgent.documents.businessLicense.status} />
                   </div>
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="sm:justify-between pt-4">
             <Button variant="outline" onClick={() => setSelectedAgent(null)}>Close</Button>
+            {selectedAgent && (
+              <div className="flex gap-2">
+                {selectedAgent.status !== 'Approved' && 
+                  <Button className="bg-green-600 hover:bg-green-700" onClick={() => { handleApproveAgent(selectedAgent); setSelectedAgent(null); }}>Approve</Button>}
+                {selectedAgent.status !== 'Rejected' && 
+                  <Button variant="destructive" onClick={() => { handleRejectAgent(selectedAgent); setSelectedAgent(null); }}>Reject</Button>}
+                {selectedAgent.status !== 'Pending' && 
+                  <Button variant="secondary" onClick={() => { handleSetToPending(selectedAgent); setSelectedAgent(null); }}>Set to Pending</Button>}
+              </div>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
