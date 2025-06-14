@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import {
   Dialog,
@@ -5,10 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-// This type needs to be consistent with the one in AgentManagementTable.tsx
 type FetchedAgent = {
   id: string;
   businessName: string;
@@ -22,12 +24,18 @@ type FetchedAgent = {
     idCard: 'verified' | 'missing' | 'pending';
     businessLicense: 'verified' | 'missing' | 'pending';
   };
+  documentUrls: {
+    cacCert: string | null;
+    idCard: string | null;
+    businessLicense: string | null;
+  };
 };
 
 interface AgentDetailsModalProps {
   agent: FetchedAgent | null;
   isOpen: boolean;
   onClose: () => void;
+  onUpdateStatus: (variables: { agentId: string; status: 'Approved' | 'Pending' | 'Rejected' }) => void;
 }
 
 const statusVariantMap = {
@@ -42,10 +50,24 @@ const statusColorMap: { [key: string]: string } = {
     missing: 'bg-red-100 text-red-800',
 }
 
-const AgentDetailsModal = ({ agent, isOpen, onClose }: AgentDetailsModalProps) => {
+const AgentDetailsModal = ({ agent, isOpen, onClose, onUpdateStatus }: AgentDetailsModalProps) => {
   if (!agent) return null;
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const DocumentRow = ({ label, status, url }: { label: string; status: 'verified' | 'missing' | 'pending', url: string | null }) => (
+    <div className="flex items-center justify-between">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2">
+        <Badge variant={statusVariantMap[status]} className={statusColorMap[status]}>
+            {capitalize(status)}
+        </Badge>
+        {url && (
+            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline">View</a>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -79,27 +101,17 @@ const AgentDetailsModal = ({ agent, isOpen, onClose }: AgentDetailsModalProps) =
           <div>
             <p className="text-sm font-medium mb-2">Documents</p>
             <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">CAC Certificate</p>
-                    <Badge variant={statusVariantMap[agent.documents.cacCert]} className={statusColorMap[agent.documents.cacCert]}>
-                        {capitalize(agent.documents.cacCert)}
-                    </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">ID Card</p>
-                    <Badge variant={statusVariantMap[agent.documents.idCard]} className={statusColorMap[agent.documents.idCard]}>
-                        {capitalize(agent.documents.idCard)}
-                    </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">Business License</p>
-                    <Badge variant={statusVariantMap[agent.documents.businessLicense]} className={statusColorMap[agent.documents.businessLicense]}>
-                        {capitalize(agent.documents.businessLicense)}
-                    </Badge>
-                </div>
+              <DocumentRow label="CAC Certificate" status={agent.documents.cacCert} url={agent.documentUrls.cacCert} />
+              <DocumentRow label="ID Card" status={agent.documents.idCard} url={agent.documentUrls.idCard} />
+              <DocumentRow label="Business License" status={agent.documents.businessLicense} url={agent.documentUrls.businessLicense} />
             </div>
           </div>
         </div>
+        <DialogFooter className="gap-2 sm:justify-start">
+            <Button onClick={() => onUpdateStatus({ agentId: agent.id, status: 'Approved' })} variant="default" className="bg-green-600 hover:bg-green-700">Approve</Button>
+            <Button onClick={() => onUpdateStatus({ agentId: agent.id, status: 'Rejected' })} variant="destructive">Reject</Button>
+            <Button onClick={() => onUpdateStatus({ agentId: agent.id, status: 'Pending' })} variant="secondary">Set to Pending</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

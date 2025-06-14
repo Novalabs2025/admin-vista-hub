@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,12 +25,18 @@ export type FetchedAgent = {
     idCard: 'verified' | 'missing' | 'pending';
     businessLicense: 'verified' | 'missing' | 'pending';
   };
+  documentUrls: {
+    cacCert: string | null;
+    idCard: string | null;
+    businessLicense: string | null;
+  };
 };
 
 const AgentManagementTable = () => {
     const [searchTerm, setSearchTerm] = React.useState("");
     const [statusFilter, setStatusFilter] = React.useState("All");
     const [selectedAgent, setSelectedAgent] = React.useState<FetchedAgent | null>(null);
+    const queryClient = useQueryClient();
 
     const { data: agents, isLoading } = useQuery({
       queryKey: ['allAgents'],
@@ -63,6 +69,8 @@ const AgentManagementTable = () => {
         return verifications.map(verification => {
           const profile = profilesById.get(verification.user_id);
           const statusKey = verification.status as keyof typeof statusMap;
+          // We cast to any to access a column that might not be in the generated types yet.
+          const castedVerification = verification as any;
 
           return {
             id: verification.user_id,
@@ -73,12 +81,37 @@ const AgentManagementTable = () => {
             locationFocus: profile?.location_focus || 'N/A',
             status: statusMap[statusKey] || 'Pending',
             documents: {
-              cacCert: 'missing',
+              cacCert: castedVerification.cac_document_url ? 'verified' : 'missing',
               idCard: verification.id_document_url ? 'verified' : 'missing',
               businessLicense: verification.license_document_url ? 'verified' : 'missing',
             },
+            documentUrls: {
+              cacCert: castedVerification.cac_document_url ?? null,
+              idCard: verification.id_document_url ?? null,
+              businessLicense: verification.license_document_url ?? null,
+            }
           };
         });
+      }
+    });
+
+    const updateAgentStatusMutation = useMutation({
+      mutationFn: async ({ agentId, status }: { agentId: string, status: 'Approved' | 'Pending' | 'Rejected' }) => {
+          const { error } = await supabase
+              .from('agent_verifications')
+              .update({ status: status.toLowerCase() as 'approved' | 'pending' | 'rejected' })
+              .eq('user_id', agentId);
+  
+          if (error) {
+              throw new Error(error.message);
+          }
+      },
+      onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['allAgents'] });
+          setSelectedAgent(null);
+      },
+      onError: (error) => {
+          console.error("Error updating agent status:", error);
       }
     });
 
@@ -164,6 +197,7 @@ const AgentManagementTable = () => {
                 agent={selectedAgent}
                 isOpen={!!selectedAgent}
                 onClose={() => setSelectedAgent(null)}
+                onUpdateStatus={updateAgentStatusMutation.mutate}
             />
         </>
     );
