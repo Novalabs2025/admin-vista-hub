@@ -5,12 +5,12 @@ import { Briefcase, Users, MessageSquare, Star } from "lucide-react";
 const stats = [
   {
     title: "Active Properties",
-    value: "1,247",
+    value: "0",
     icon: Briefcase,
   },
   {
     title: "Verified Agents",
-    value: "89",
+    value: "0",
     icon: Users,
   },
   {
