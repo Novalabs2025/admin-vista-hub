@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import {
   Table,
@@ -12,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { agents, Agent } from "@/data/mockData";
-import { CheckCircle2, XCircle, Hourglass, Eye, MoreVertical } from 'lucide-react';
+import { CheckCircle2, XCircle, Hourglass, Eye, MoreVertical, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -22,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 const DocumentDisplay = ({ name, status }: { name: string; status: 'verified' | 'missing' | 'pending' }) => {
     let icon, colorClass;
@@ -70,6 +70,12 @@ const AgentActions = ({ agent, onAction }: { agent: Agent; onAction: (agent: Age
 
 const AgentVerificationTable = () => {
   const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  const filteredAgents = agents.filter(agent =>
+    agent.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    agent.contactName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <>
@@ -78,6 +84,18 @@ const AgentVerificationTable = () => {
           <CardTitle>Agent Verification Queue</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center py-4">
+            <div className="relative w-full max-w-sm">
+                <Search className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search agents by name..."
+                  className="w-full rounded-lg bg-background pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -89,7 +107,7 @@ const AgentVerificationTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {agents.map((agent) => (
+              {filteredAgents.map((agent) => (
                 <TableRow key={agent.id}>
                   <TableCell>
                     <div className="font-medium">{agent.businessName}</div>

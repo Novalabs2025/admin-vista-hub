@@ -12,8 +12,11 @@ import {
   SidebarGroupContent
 } from "@/components/ui/sidebar";
 import { LayoutDashboard, Users, Settings, Building2, Bell } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 export function AppSidebar() {
+  const location = useLocation();
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -30,21 +33,27 @@ export function AppSidebar() {
             <SidebarGroupContent>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton href="#" isActive>
-                            <LayoutDashboard size={16}/>
-                            Dashboard
+                        <SidebarMenuButton asChild isActive={location.pathname === '/'}>
+                            <Link to="/">
+                                <LayoutDashboard size={16}/>
+                                Dashboard
+                            </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                        <SidebarMenuButton href="#">
-                            <Users size={16}/>
-                            Agents
+                        <SidebarMenuButton asChild isActive={location.pathname === '/agents'}>
+                            <Link to="/agents">
+                                <Users size={16}/>
+                                Agents
+                            </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                        <SidebarMenuButton href="#">
-                            <Bell size={16}/>
-                            Notifications
+                        <SidebarMenuButton asChild isActive={location.pathname === '/notifications'}>
+                            <Link to="/notifications">
+                                <Bell size={16}/>
+                                Notifications
+                            </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
@@ -54,9 +63,11 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
             <SidebarMenuItem>
-                <SidebarMenuButton href="#">
-                    <Settings size={16}/>
-                    Settings
+                <SidebarMenuButton asChild isActive={location.pathname === '/settings'}>
+                    <Link to="/settings">
+                        <Settings size={16}/>
+                        Settings
+                    </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
         </SidebarMenu>
