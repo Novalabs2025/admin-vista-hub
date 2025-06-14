@@ -11,7 +11,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Settings, Building2, Bell, FileText } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Building2, Bell, FileText, Home } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 export function AppSidebar() {
@@ -37,6 +37,14 @@ export function AppSidebar() {
                             <Link to="/">
                                 <LayoutDashboard size={16}/>
                                 Dashboard
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={location.pathname === '/properties'}>
+                            <Link to="/properties">
+                                <Home size={16}/>
+                                Properties
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
