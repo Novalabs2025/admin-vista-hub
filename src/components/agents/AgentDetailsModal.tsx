@@ -20,7 +20,7 @@ const statusVariantMap = {
   verified: "default",
   pending: "secondary",
   missing: "destructive",
-};
+} as const;
 
 const statusColorMap: { [key: string]: string } = {
     verified: 'bg-green-100 text-green-800',
