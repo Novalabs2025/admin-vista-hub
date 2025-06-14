@@ -1,0 +1,86 @@
+
+import * as React from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { agents } from "@/data/mockData";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search } from 'lucide-react';
+
+const AgentManagementTable = () => {
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const [statusFilter, setStatusFilter] = React.useState("All");
+
+    const filteredAgents = agents.filter(agent =>
+        (agent.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agent.contactName.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        (statusFilter === "All" || agent.status === statusFilter)
+    );
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Agent Management</CardTitle>
+                <CardDescription>View, manage, and search for all agents in the system.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between py-4">
+                    <div className="relative w-full max-w-sm">
+                        <Search className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          type="search"
+                          placeholder="Search agents..."
+                          className="w-full rounded-lg bg-background pl-8"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">All Statuses</SelectItem>
+                            <SelectItem value="Approved">Approved</SelectItem>
+                            <SelectItem value="Pending">Pending</SelectItem>
+                            <SelectItem value="Rejected">Rejected</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Business Name</TableHead>
+                            <TableHead>Contact Name</TableHead>
+                            <TableHead>Location</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredAgents.map((agent) => (
+                            <TableRow key={agent.id}>
+                                <TableCell className="font-medium">{agent.businessName}</TableCell>
+                                <TableCell>{agent.contactName}</TableCell>
+                                <TableCell>{agent.location}</TableCell>
+                                <TableCell>
+                                    <Badge variant={agent.status === 'Approved' ? 'default' : agent.status === 'Pending' ? 'secondary' : 'destructive'}
+                                           className={agent.status === 'Approved' ? 'bg-green-100 text-green-800' : agent.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}>
+                                        {agent.status}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="outline" size="sm">View Details</Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+};
+
+export default AgentManagementTable;
