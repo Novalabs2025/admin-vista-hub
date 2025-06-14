@@ -35,14 +35,16 @@ const PropertyDetailsModal = ({ property, isOpen, onClose }: PropertyDetailsModa
         <div className="grid gap-6 py-4">
           {images.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {images.map((imgId, index) => (
-                <div key={index} className="aspect-w-1 aspect-h-1">
-                  <img
-                    src={`https://images.unsplash.com/${imgId}?w=400&h=300&fit=crop`}
-                    alt={`Property image ${index + 1}`}
-                    className="rounded-md object-cover w-full h-full"
-                  />
-                </div>
+              {images.map((imgUrl, index) => (
+                typeof imgUrl === 'string' ? (
+                  <div key={index} className="aspect-w-1 aspect-h-1">
+                    <img
+                      src={imgUrl}
+                      alt={`Property image ${index + 1}`}
+                      className="rounded-md object-cover w-full h-full"
+                    />
+                  </div>
+                ) : null
               ))}
             </div>
           ) : (
