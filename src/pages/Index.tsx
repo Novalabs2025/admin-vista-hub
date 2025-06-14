@@ -1,12 +1,16 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import Header from "@/components/dashboard/Header";
+import StatCards from "@/components/dashboard/StatCards";
+import AgentVerificationTable from "@/components/dashboard/AgentVerificationTable";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="flex flex-col flex-1 h-full">
+      <Header />
+      <main className="flex-1 p-4 md:p-6 space-y-6 overflow-auto">
+        <StatCards />
+        <AgentVerificationTable />
+      </main>
     </div>
   );
 };
