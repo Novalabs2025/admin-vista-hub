@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Bell, UserCircle, Menu } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   return (
@@ -14,11 +15,15 @@ const Header = () => {
             <p className="text-sm text-muted-foreground">System Management</p>
         </div>
         <div className="flex items-center gap-4">
-            <Button variant="destructive" size="sm" className="gap-2">
-                <Bell size={16} />
-                <span>3 Pending Actions</span>
+            <Button variant="destructive" size="sm" className="gap-2" asChild>
+                <Link to="/notifications">
+                    <Bell size={16} />
+                    <span>3 Pending Actions</span>
+                </Link>
             </Button>
-            <UserCircle size={32} className="text-muted-foreground" />
+            <Link to="/settings">
+                <UserCircle size={32} className="text-muted-foreground cursor-pointer" />
+            </Link>
         </div>
     </header>
   );
