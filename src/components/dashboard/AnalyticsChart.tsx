@@ -27,7 +27,7 @@ const AnalyticsChart = () => {
         <CardDescription>New agents onboarded per month</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+        <ChartContainer config={chartConfig} className="h-[250px] w-full">
             <BarChart accessibilityLayer data={chartData}>
               <CartesianGrid vertical={false} />
               <XAxis
