@@ -1,4 +1,6 @@
 import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
   TableBody,
@@ -10,7 +12,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { agents, Agent } from "@/data/mockData";
 import { CheckCircle2, XCircle, Hourglass, Eye, MoreVertical, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
@@ -22,6 +23,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export type FetchedAgent = {
+  id: string; // user_id from db
+  businessName: string;
+  contactName: string;
+  phone: string;
+  location: string;
+  locationFocus: string;
+  status: 'Approved' | 'Pending' | 'Rejected';
+  documents: {
+    cacCert: 'verified' | 'missing' | 'pending';
+    idCard: 'verified' | 'missing' | 'pending';
+    businessLicense: 'verified' | 'missing' | 'pending';
+  };
+};
 
 const DocumentDisplay = ({ name, status }: { name: string; status: 'verified' | 'missing' | 'pending' }) => {
     let icon, colorClass;
@@ -41,7 +58,7 @@ const DocumentDisplay = ({ name, status }: { name: string; status: 'verified' | 
     </div>
 }
 
-const AgentActions = ({ agent, onAction }: { agent: Agent; onAction: (agent: Agent) => void }) => {
+const AgentActions = ({ agent, onAction }: { agent: FetchedAgent; onAction: (agent: FetchedAgent) => void }) => {
     if (agent.status === 'Pending') {
         return (
             <div className="flex gap-2">
@@ -69,10 +86,60 @@ const AgentActions = ({ agent, onAction }: { agent: Agent; onAction: (agent: Age
 };
 
 const AgentVerificationTable = () => {
-  const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
+  const [selectedAgent, setSelectedAgent] = React.useState<FetchedAgent | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
 
-  const filteredAgents = agents.filter(agent =>
+  const { data: agents, isLoading } = useQuery({
+    queryKey: ['agentsForVerification'],
+    queryFn: async (): Promise<FetchedAgent[]> => {
+      const { data: verifications, error: verificationsError } = await supabase
+        .from('agent_verifications')
+        .select('*');
+
+      if (verificationsError) throw new Error(verificationsError.message);
+      if (!verifications) return [];
+
+      const userIds = verifications.map(v => v.user_id);
+      if (userIds.length === 0) return [];
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', userIds);
+      
+      if (profilesError) throw new Error(profilesError.message);
+      
+      const profilesById = new Map(profiles?.map(p => [p.id, p]));
+
+      const statusMap = {
+        verified: 'Approved',
+        pending: 'Pending',
+        rejected: 'Rejected',
+      } as const;
+
+      return verifications.map(verification => {
+        const profile = profilesById.get(verification.user_id);
+        const statusKey = verification.status as keyof typeof statusMap;
+
+        return {
+          id: verification.user_id,
+          businessName: profile?.full_name || 'N/A',
+          contactName: profile?.full_name || 'N/A',
+          phone: profile?.phone_number || 'N/A',
+          location: 'N/A',
+          locationFocus: 'N/A',
+          status: statusMap[statusKey] || 'Pending',
+          documents: {
+            cacCert: 'missing',
+            idCard: verification.id_document_url ? 'verified' : 'missing',
+            businessLicense: verification.license_document_url ? 'verified' : 'missing',
+          },
+        };
+      });
+    }
+  });
+
+  const filteredAgents = (agents || []).filter(agent =>
     agent.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     agent.contactName.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -107,35 +174,45 @@ const AgentVerificationTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAgents.map((agent) => (
-                <TableRow key={agent.id}>
-                  <TableCell>
-                    <div className="font-medium">{agent.businessName}</div>
-                    <div className="text-sm text-muted-foreground">{agent.contactName}</div>
-                    <div className="text-sm text-muted-foreground">{agent.phone}</div>
-                  </TableCell>
-                  <TableCell>
-                      <div>{agent.location}</div>
-                      <div className="text-sm text-muted-foreground">{agent.locationFocus}</div>
-                  </TableCell>
-                  <TableCell>
-                      <div className="flex flex-col gap-1.5">
-                          <DocumentDisplay name="CAC Cert" status={agent.documents.cacCert} />
-                          <DocumentDisplay name="ID Card" status={agent.documents.idCard} />
-                          <DocumentDisplay name="Business License" status={agent.documents.businessLicense} />
-                      </div>
-                  </TableCell>
-                  <TableCell>
-                      <Badge variant={agent.status === 'Approved' ? 'default' : agent.status === 'Pending' ? 'secondary' : 'destructive'} 
-                             className={agent.status === 'Approved' ? 'bg-green-100 text-green-800 border-green-200' : agent.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'}>
-                          {agent.status}
-                      </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                      <AgentActions agent={agent} onAction={setSelectedAgent} />
-                  </TableCell>
-                </TableRow>
-              ))}
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell colSpan={5}>
+                      <Skeleton className="h-8 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                filteredAgents.map((agent) => (
+                  <TableRow key={agent.id}>
+                    <TableCell>
+                      <div className="font-medium">{agent.businessName}</div>
+                      <div className="text-sm text-muted-foreground">{agent.contactName}</div>
+                      <div className="text-sm text-muted-foreground">{agent.phone}</div>
+                    </TableCell>
+                    <TableCell>
+                        <div>{agent.location}</div>
+                        <div className="text-sm text-muted-foreground">{agent.locationFocus}</div>
+                    </TableCell>
+                    <TableCell>
+                        <div className="flex flex-col gap-1.5">
+                            <DocumentDisplay name="CAC Cert" status={agent.documents.cacCert} />
+                            <DocumentDisplay name="ID Card" status={agent.documents.idCard} />
+                            <DocumentDisplay name="Business License" status={agent.documents.businessLicense} />
+                        </div>
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant={agent.status === 'Approved' ? 'default' : agent.status === 'Pending' ? 'secondary' : 'destructive'} 
+                               className={agent.status === 'Approved' ? 'bg-green-100 text-green-800 border-green-200' : agent.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'}>
+                            {agent.status}
+                        </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <AgentActions agent={agent} onAction={setSelectedAgent} />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

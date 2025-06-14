@@ -1,21 +1,88 @@
 
 import * as React from 'react';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { agents, Agent } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from 'lucide-react';
 import AgentDetailsModal from './AgentDetailsModal';
+import { Skeleton } from "@/components/ui/skeleton";
+
+export type FetchedAgent = {
+  id: string;
+  businessName: string;
+  contactName: string;
+  phone: string;
+  location: string;
+  locationFocus: string;
+  status: 'Approved' | 'Pending' | 'Rejected';
+  documents: {
+    cacCert: 'verified' | 'missing' | 'pending';
+    idCard: 'verified' | 'missing' | 'pending';
+    businessLicense: 'verified' | 'missing' | 'pending';
+  };
+};
 
 const AgentManagementTable = () => {
     const [searchTerm, setSearchTerm] = React.useState("");
     const [statusFilter, setStatusFilter] = React.useState("All");
-    const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
+    const [selectedAgent, setSelectedAgent] = React.useState<FetchedAgent | null>(null);
 
-    const filteredAgents = agents.filter(agent =>
+    const { data: agents, isLoading } = useQuery({
+      queryKey: ['allAgents'],
+      queryFn: async (): Promise<FetchedAgent[]> => {
+        const { data: verifications, error: verificationsError } = await supabase
+          .from('agent_verifications')
+          .select('*');
+
+        if (verificationsError) throw new Error(verificationsError.message);
+        if (!verifications) return [];
+
+        const userIds = verifications.map(v => v.user_id);
+        if (userIds.length === 0) return [];
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+        
+        if (profilesError) throw new Error(profilesError.message);
+        
+        const profilesById = new Map(profiles?.map(p => [p.id, p]));
+
+        const statusMap = {
+          verified: 'Approved',
+          pending: 'Pending',
+          rejected: 'Rejected',
+        } as const;
+
+        return verifications.map(verification => {
+          const profile = profilesById.get(verification.user_id);
+          const statusKey = verification.status as keyof typeof statusMap;
+
+          return {
+            id: verification.user_id,
+            businessName: profile?.full_name || 'N/A',
+            contactName: profile?.full_name || 'N/A',
+            phone: profile?.phone_number || 'N/A',
+            location: 'N/A',
+            locationFocus: 'N/A',
+            status: statusMap[statusKey] || 'Pending',
+            documents: {
+              cacCert: 'missing',
+              idCard: verification.id_document_url ? 'verified' : 'missing',
+              businessLicense: verification.license_document_url ? 'verified' : 'missing',
+            },
+          };
+        });
+      }
+    });
+
+    const filteredAgents = (agents || []).filter(agent =>
         (agent.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         agent.contactName.toLowerCase().includes(searchTerm.toLowerCase())) &&
         (statusFilter === "All" || agent.status === statusFilter)
@@ -63,22 +130,32 @@ const AgentManagementTable = () => {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredAgents.map((agent) => (
-                                <TableRow key={agent.id}>
-                                    <TableCell className="font-medium">{agent.businessName}</TableCell>
-                                    <TableCell>{agent.contactName}</TableCell>
-                                    <TableCell>{agent.location}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={agent.status === 'Approved' ? 'default' : agent.status === 'Pending' ? 'secondary' : 'destructive'}
-                                               className={agent.status === 'Approved' ? 'bg-green-100 text-green-800' : agent.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}>
-                                            {agent.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => setSelectedAgent(agent)}>View Details</Button>
-                                    </TableCell>
+                            {isLoading ? (
+                              Array.from({ length: 5 }).map((_, index) => (
+                                <TableRow key={index}>
+                                  <TableCell colSpan={5}>
+                                    <Skeleton className="h-8 w-full" />
+                                  </TableCell>
                                 </TableRow>
-                            ))}
+                              ))
+                            ) : (
+                              filteredAgents.map((agent) => (
+                                  <TableRow key={agent.id}>
+                                      <TableCell className="font-medium">{agent.businessName}</TableCell>
+                                      <TableCell>{agent.contactName}</TableCell>
+                                      <TableCell>{agent.location}</TableCell>
+                                      <TableCell>
+                                          <Badge variant={agent.status === 'Approved' ? 'default' : agent.status === 'Pending' ? 'secondary' : 'destructive'}
+                                                 className={agent.status === 'Approved' ? 'bg-green-100 text-green-800' : agent.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}>
+                                              {agent.status}
+                                          </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                          <Button variant="outline" size="sm" onClick={() => setSelectedAgent(agent)}>View Details</Button>
+                                      </TableCell>
+                                  </TableRow>
+                              ))
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>

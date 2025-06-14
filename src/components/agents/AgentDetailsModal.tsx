@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import {
   Dialog,
@@ -8,10 +7,25 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Agent } from "@/data/mockData";
+
+// This type needs to be consistent with the one in AgentManagementTable.tsx
+type FetchedAgent = {
+  id: string;
+  businessName: string;
+  contactName: string;
+  phone: string;
+  location: string;
+  locationFocus: string;
+  status: 'Approved' | 'Pending' | 'Rejected';
+  documents: {
+    cacCert: 'verified' | 'missing' | 'pending';
+    idCard: 'verified' | 'missing' | 'pending';
+    businessLicense: 'verified' | 'missing' | 'pending';
+  };
+};
 
 interface AgentDetailsModalProps {
-  agent: Agent | null;
+  agent: FetchedAgent | null;
   isOpen: boolean;
   onClose: () => void;
 }
