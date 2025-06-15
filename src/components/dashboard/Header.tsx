@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const Header = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { unreadCount } = useNotifications();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -33,12 +35,20 @@ const Header = () => {
             <p className="text-sm text-muted-foreground">System Management</p>
         </div>
         <div className="flex items-center gap-4">
-            <Button variant="destructive" size="sm" className="gap-2" asChild>
-                <Link to="/notifications">
-                    <Bell size={16} />
-                    <span>3 Pending Actions</span>
-                </Link>
-            </Button>
+            {unreadCount > 0 ? (
+              <Button variant="destructive" size="sm" className="gap-2" asChild>
+                  <Link to="/notifications">
+                      <Bell size={16} />
+                      <span>{unreadCount} Pending Action{unreadCount !== 1 ? 's' : ''}</span>
+                  </Link>
+              </Button>
+            ) : (
+                <Button variant="ghost" size="icon" asChild>
+                    <Link to="/notifications">
+                        <Bell size={20} />
+                    </Link>
+                </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
