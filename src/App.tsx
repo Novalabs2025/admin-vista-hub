@@ -14,6 +14,7 @@ import Payments from "./pages/Payments";
 import { AuthProvider } from "./contexts/AuthContext";
 import AuthPage from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import RoleProtectedRoute from "./components/auth/RoleProtectedRoute";
 import Properties from "./pages/Properties";
 
 const queryClient = new QueryClient();
@@ -32,7 +33,7 @@ const App = () => (
             <Route path="/agents" element={<ProtectedRoute><DashboardLayout><Agents /></DashboardLayout></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><DashboardLayout><Notifications /></DashboardLayout></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><DashboardLayout><Payments /></DashboardLayout></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/settings" element={<RoleProtectedRoute allowedRoles={['admin']}><DashboardLayout><Settings /></DashboardLayout></RoleProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><DashboardLayout><NotFound /></DashboardLayout></ProtectedRoute>} />
           </Routes>
