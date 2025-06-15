@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 type Notification = Tables<'notifications'>;
 
@@ -28,45 +28,61 @@ export const useNotifications = () => {
   });
 
   useEffect(() => {
-    const handleNewNotification = (payload: any) => {
+    let channel: any = null;
+
+    const setupChannel = async () => {
+      const handleNewNotification = (payload: any) => {
         console.log('New notification received!', payload);
         toast({
           title: "New Notification",
           description: (payload.new as Notification).title,
         });
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    };
-    
-    const handleNotificationUpdate = () => {
+      };
+      
+      const handleNotificationUpdate = () => {
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      };
+
+      // Create a unique channel name to avoid conflicts
+      const channelName = `notifications-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+          },
+          handleNewNotification
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+          },
+          handleNotificationUpdate
+        );
+
+      // Subscribe to the channel
+      const subscription = await channel.subscribe();
+      console.log('Notification channel subscription status:', subscription);
     };
 
-    const channel = supabase
-      .channel('realtime-notifications-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-        },
-        handleNewNotification
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-        },
-        handleNotificationUpdate
-      )
-      .subscribe();
+    setupChannel();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        console.log('Cleaning up notification channel subscription');
+        supabase.removeChannel(channel);
+        channel = null;
+      }
     };
-  }, [queryClient, toast]);
+  }, []); // Empty dependency array to run only once
 
   const unreadCount = notifications?.filter(n => !n.read).length || 0;
 
