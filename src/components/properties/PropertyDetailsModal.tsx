@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tables } from "@/integrations/supabase/types";
-import { DollarSign, Home, Bed, Bath, Square } from "lucide-react";
+import { DollarSign, Home, Bed, Bath, Square, ShieldCheck, ShieldX, Hourglass } from "lucide-react";
 
 type Property = Tables<'properties'>;
 
@@ -23,6 +23,19 @@ const PropertyDetailsModal = ({ property, isOpen, onClose }: PropertyDetailsModa
 
   const images = Array.isArray(property.image_urls) ? property.image_urls : [];
 
+  const getStatusIcon = () => {
+    switch (property.status) {
+      case 'approved':
+        return <ShieldCheck className="h-4 w-4 text-green-500" />;
+      case 'rejected':
+        return <ShieldX className="h-4 w-4 text-red-500" />;
+      case 'pending':
+        return <Hourglass className="h-4 w-4 text-yellow-500" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -33,6 +46,36 @@ const PropertyDetailsModal = ({ property, isOpen, onClose }: PropertyDetailsModa
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
+          <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Status:</span>
+                <Badge
+                  variant={
+                    property.status === "approved"
+                      ? "default"
+                      : property.status === "pending"
+                      ? "secondary"
+                      : "destructive"
+                  }
+                   className={
+                          property.status === "approved"
+                            ? "bg-green-100 text-green-800"
+                            : property.status === "pending"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                        }
+                >
+                  {getStatusIcon()}
+                  <span className="ml-1">{property.status}</span>
+                </Badge>
+              </div>
+            {property.status === 'rejected' && property.rejection_reason && (
+              <p className="text-sm text-red-600">
+                <span className="font-semibold">Reason:</span> {property.rejection_reason}
+              </p>
+            )}
+          </div>
+
           {images.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {images.map((imgUrl, index) => (
