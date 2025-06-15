@@ -11,7 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
-import { View, MoreHorizontal, Check, X } from "lucide-react";
+import { View, MoreHorizontal, Check, X, Eye, Calendar, MapPin, TrendingUp } from "lucide-react";
 import PropertyDetailsModal from "./PropertyDetailsModal";
 import {
   DropdownMenu,
@@ -67,14 +67,15 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       toast({
-        title: "Property status updated.",
+        title: "Property status updated successfully.",
+        description: "The property status has been updated.",
       });
       setRejectionProperty(null);
       setRejectionReason("");
     },
     onError: (error) => {
       toast({
-        title: "Error updating property status.",
+        title: "Failed to update property status.",
         description: (error as Error).message,
         variant: "destructive",
       });
@@ -94,121 +95,211 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
     });
   };
 
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      approved: "bg-green-100 text-green-800 border-green-200",
+      pending: "bg-yellow-100 text-yellow-800 border-yellow-200", 
+      rejected: "bg-red-100 text-red-800 border-red-200"
+    };
+
+    return (
+      <Badge 
+        variant="outline" 
+        className={variants[status as keyof typeof variants] || "bg-gray-100 text-gray-800"}
+      >
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>All Properties</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Properties Overview
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Address</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Bedrooms</TableHead>
-                <TableHead>Bathrooms</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {properties.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center">
-                    No properties found.
-                  </TableCell>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-[250px]">Property Details</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead>Type & Features</TableHead>
+                  <TableHead className="text-center">Views</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date Listed</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                properties.map((property) => (
-                  <TableRow key={property.id}>
-                    <TableCell className="font-medium">{property.address}</TableCell>
-                    <TableCell>{property.city}</TableCell>
-                    <TableCell>{property.state}</TableCell>
-                    <TableCell>${property.price.toLocaleString()}</TableCell>
-                    <TableCell>{property.property_type}</TableCell>
-                    <TableCell className="text-center">{property.bedrooms}</TableCell>
-                    <TableCell className="text-center">{property.bathrooms}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          property.status === "approved"
-                            ? "default"
-                            : property.status === "pending"
-                            ? "secondary"
-                            : "destructive"
-                        }
-                        className={
-                          property.status === "approved"
-                            ? "bg-green-100 text-green-800"
-                            : property.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }
-                      >
-                        {property.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setSelectedProperty(property)}>
-                            <View className="mr-2 h-4 w-4" />
-                            <span>View Details</span>
-                          </DropdownMenuItem>
-                          {property.status === "pending" && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleApprove(property.id)}>
-                                <Check className="mr-2 h-4 w-4" />
-                                <span>Approve</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setRejectionProperty(property)}>
-                                <X className="mr-2 h-4 w-4" />
-                                <span>Reject</span>
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              </TableHeader>
+              <TableBody>
+                {properties.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-12">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                          <MapPin className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <p className="text-lg font-medium">No properties found</p>
+                        <p className="text-sm text-muted-foreground">
+                          Try adjusting your filters or add a new property
+                        </p>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  properties.map((property) => (
+                    <TableRow key={property.id} className="hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-medium text-sm leading-tight">{property.address}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {property.property_type} • {property.listing_type}
+                          </div>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">{property.city}, {property.state}</span>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell className="text-right">
+                        <div className="font-semibold">₦{property.price.toLocaleString()}</div>
+                        {property.area && (
+                          <div className="text-xs text-muted-foreground">
+                            ₦{Math.round(Number(property.price) / property.area).toLocaleString()}/sqft
+                          </div>
+                        )}
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex gap-2 text-xs">
+                            {property.bedrooms && (
+                              <span className="bg-muted px-2 py-1 rounded">{property.bedrooms} bed</span>
+                            )}
+                            {property.bathrooms && (
+                              <span className="bg-muted px-2 py-1 rounded">{property.bathrooms} bath</span>
+                            )}
+                          </div>
+                          {property.area && (
+                            <div className="text-xs text-muted-foreground">{property.area} sqft</div>
+                          )}
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Eye className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm font-medium">{property.views}</span>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        {getStatusBadge(property.status)}
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">{formatDate(property.created_at)}</span>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => setSelectedProperty(property)}>
+                              <View className="mr-2 h-4 w-4" />
+                              <span>View Details</span>
+                            </DropdownMenuItem>
+                            {property.status === "pending" && (
+                              <>
+                                <DropdownMenuItem 
+                                  onClick={() => handleApprove(property.id)}
+                                  className="text-green-600 focus:text-green-600"
+                                >
+                                  <Check className="mr-2 h-4 w-4" />
+                                  <span>Approve</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => setRejectionProperty(property)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <X className="mr-2 h-4 w-4" />
+                                  <span>Reject</span>
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
       <PropertyDetailsModal
         property={selectedProperty}
         isOpen={!!selectedProperty}
         onClose={() => setSelectedProperty(null)}
       />
+
       <AlertDialog open={!!rejectionProperty} onOpenChange={() => setRejectionProperty(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject Property</AlertDialogTitle>
+            <AlertDialogTitle>Reject Property Listing</AlertDialogTitle>
             <AlertDialogDescription>
-              Please provide a reason for rejecting this property listing. This will be visible to
-              the agent.
+              Please provide a clear reason for rejecting this property listing. This feedback will be 
+              shared with the agent to help them improve future submissions.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Input
-            placeholder="Rejection reason"
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Rejection Reason</label>
+            <Input
+              placeholder="e.g., Incomplete documentation, unclear images, pricing issues..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="w-full"
+            />
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setRejectionProperty(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmReject} disabled={!rejectionReason}>
-              Confirm Reject
+            <AlertDialogCancel onClick={() => {
+              setRejectionProperty(null);
+              setRejectionReason("");
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmReject} 
+              disabled={!rejectionReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Confirm Rejection
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
