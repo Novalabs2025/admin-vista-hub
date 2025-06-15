@@ -165,6 +165,66 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          read: boolean
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          read?: boolean
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          read?: boolean
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          payment_method: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          payment_method?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payment_method?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -370,6 +430,14 @@ export type Database = {
       account_type: "individual" | "business"
       app_role: "agent" | "admin"
       lead_status: "new" | "contacted" | "qualified" | "unqualified" | "closed"
+      notification_type:
+        | "new_agent_pending_approval"
+        | "system_update"
+        | "agent_rejected"
+        | "property_approved"
+        | "property_rejected"
+        | "property_submitted"
+      payment_status: "Paid" | "Pending" | "Failed"
       property_status: "pending" | "approved" | "rejected"
       subscription_plan: "free" | "premium"
       subscription_status:
@@ -497,6 +565,15 @@ export const Constants = {
       account_type: ["individual", "business"],
       app_role: ["agent", "admin"],
       lead_status: ["new", "contacted", "qualified", "unqualified", "closed"],
+      notification_type: [
+        "new_agent_pending_approval",
+        "system_update",
+        "agent_rejected",
+        "property_approved",
+        "property_rejected",
+        "property_submitted",
+      ],
+      payment_status: ["Paid", "Pending", "Failed"],
       property_status: ["pending", "approved", "rejected"],
       subscription_plan: ["free", "premium"],
       subscription_status: [
