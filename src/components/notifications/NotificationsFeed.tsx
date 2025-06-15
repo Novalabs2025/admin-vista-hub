@@ -1,71 +1,123 @@
 
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Bell, Users, FileText, CheckCircle, XCircle, Home } from 'lucide-react';
-import { Avatar } from "@/components/ui/avatar";
+import { Bell } from 'lucide-react';
 import { Tables } from "@/integrations/supabase/types";
-import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useNotificationActions } from "@/hooks/useNotificationActions";
+import NotificationFilters from "./NotificationFilters";
+import NotificationItem from "./NotificationItem";
 
 type Notification = Tables<'notifications'>;
 
-const getNotificationIcon = (type: Notification['type']) => {
-  switch (type) {
-    case 'new_agent_pending_approval':
-      return <Users className="h-5 w-5" />;
-    case 'property_submitted':
-      return <Home className="h-5 w-5" />;
-    case 'property_approved':
-      return <CheckCircle className="h-5 w-5" />;
-    case 'property_rejected':
-      return <XCircle className="h-5 w-5" />;
-    case 'agent_rejected':
-        return <XCircle className="h-5 w-5 text-red-500" />;
-    default:
-      return <FileText className="h-5 w-5" />;
-  }
-};
-
 const NotificationsFeed = () => {
-    const { notifications, isLoading, error } = useNotifications();
+  const { notifications, isLoading, error } = useNotifications();
+  const { markAsRead, markAllAsRead } = useNotificationActions();
+  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
 
+  const filteredNotifications = useMemo(() => {
+    if (!notifications) return [];
+    
+    return notifications.filter(notification => {
+      const typeMatch = filterType === "all" || notification.type === filterType;
+      const statusMatch = filterStatus === "all" || 
+        (filterStatus === "read" && notification.read) ||
+        (filterStatus === "unread" && !notification.read);
+      
+      return typeMatch && statusMatch;
+    });
+  }, [notifications, filterType, filterStatus]);
+
+  const unreadCount = notifications?.filter(n => !n.read).length || 0;
+
+  if (isLoading) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>Recent events and updates from the system.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {isLoading ? (
-                        Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
-                    ) : error ? (
-                        <div className="text-red-500">Error loading notifications.</div>
-                    ) : notifications && notifications.length > 0 ? (
-                        notifications.map((notification) => (
-                            <div key={notification.id} className="flex items-start gap-4">
-                                <Avatar className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                    {getNotificationIcon(notification.type)}
-                                </Avatar>
-                                <div className="flex-1">
-                                    <p className="font-medium">{notification.title}</p>
-                                    <p className="text-sm text-muted-foreground">{notification.description}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                                    </p>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="text-center text-muted-foreground py-8">
-                            <Bell className="mx-auto h-12 w-12" />
-                            <p className="mt-4">No notifications yet.</p>
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+          <CardDescription>Recent events and updates from the system.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+          <CardDescription>Recent events and updates from the system.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-red-500 py-8">
+            <Bell className="mx-auto h-12 w-12 mb-4" />
+            <p>Error loading notifications. Please try again later.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5" />
+          Notifications
+          {unreadCount > 0 && (
+            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+              {unreadCount}
+            </span>
+          )}
+        </CardTitle>
+        <CardDescription>Recent events and updates from the system.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <NotificationFilters
+            filterType={filterType}
+            filterStatus={filterStatus}
+            onFilterTypeChange={setFilterType}
+            onFilterStatusChange={setFilterStatus}
+            onMarkAllRead={markAllAsRead}
+            unreadCount={unreadCount}
+          />
+
+          <div className="space-y-3">
+            {filteredNotifications.length > 0 ? (
+              filteredNotifications.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  onMarkAsRead={markAsRead}
+                />
+              ))
+            ) : notifications && notifications.length > 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                <Bell className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                <p>No notifications match the current filters.</p>
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                <Bell className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                <p>No notifications yet.</p>
+                <p className="text-sm mt-2">You'll see updates and alerts here when they arrive.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default NotificationsFeed;
