@@ -39,17 +39,33 @@ serve(async (req) => {
     const payload = JSON.parse(body);
 
     if (payload.event === 'charge.success') {
-      const { reference, amount, customer } = payload.data;
+      const { reference, amount } = payload.data;
       
       const { data: payment, error: paymentError } = await supabaseClient
         .from('payments')
-        .select('id, user_id, amount')
+        .select('id, user_id, amount, status')
         .eq('transaction_id', reference)
-        .single();
+        .maybeSingle();
 
-      if (paymentError || !payment) {
-          console.error(`Payment with reference ${reference} not found.`, paymentError);
-          return new Response('Payment not found', { status: 404 });
+      if (paymentError) {
+        console.error(`Supabase error fetching payment with reference ${reference}:`, paymentError);
+        return new Response('Internal server error', { status: 500 });
+      }
+
+      if (!payment) {
+          console.warn(`Payment with reference ${reference} not found. Acknowledging to prevent retries.`);
+          return new Response(JSON.stringify({ received: true, message: "Payment not found in our system, but webhook acknowledged." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          });
+      }
+
+      if (payment.status === 'Paid') {
+        console.log(`Payment with reference ${reference} already marked as 'Paid'. Skipping update.`);
+        return new Response(JSON.stringify({ received: true, message: "Payment already processed." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+        });
       }
 
       const { error: updateError } = await supabaseClient
@@ -61,6 +77,8 @@ serve(async (req) => {
         console.error('Failed to update payment status:', updateError);
         return new Response('Failed to update payment', { status: 500 });
       }
+      
+      console.log(`Payment ${reference} status updated to Paid.`);
 
       const { error: notificationError } = await supabaseClient
         .from('notifications')
@@ -73,7 +91,8 @@ serve(async (req) => {
 
       if (notificationError) {
         console.error('Failed to create notification:', notificationError);
-        // Don't fail the whole request, just log the error
+      } else {
+        console.log(`Notification created for successful payment ${reference}.`);
       }
     }
 
@@ -86,3 +105,4 @@ serve(async (req) => {
     return new Response(`Webhook Error: ${error.message}`, { status: 400 })
   }
 })
+
