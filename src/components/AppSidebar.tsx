@@ -11,7 +11,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Settings, Building2, Bell, FileText, Home, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Building2, Bell, FileText, Home, BarChart3, TrendingUp } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -52,6 +52,14 @@ export function AppSidebar() {
                             <Link to="/properties">
                                 <Home size={16}/>
                                 Properties
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={location.pathname === '/property-performance'}>
+                            <Link to="/property-performance">
+                                <TrendingUp size={16}/>
+                                Performance Tracker
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>

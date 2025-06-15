@@ -12,6 +12,7 @@ import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Payments from "./pages/Payments";
 import Analytics from "./pages/Analytics";
+import PropertyPerformance from "./pages/PropertyPerformance";
 import { AuthProvider } from "./contexts/AuthContext";
 import AuthPage from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/" element={<ProtectedRoute><DashboardLayout><Index /></DashboardLayout></ProtectedRoute>} />
             <Route path="/properties" element={<ProtectedRoute><DashboardLayout><Properties /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/property-performance" element={<ProtectedRoute><DashboardLayout><PropertyPerformance /></DashboardLayout></ProtectedRoute>} />
             <Route path="/agents" element={<ProtectedRoute><DashboardLayout><Agents /></DashboardLayout></ProtectedRoute>} />
             <Route path="/analytics" element={<RoleProtectedRoute allowedRoles={['admin']}><DashboardLayout><Analytics /></DashboardLayout></RoleProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><DashboardLayout><Notifications /></DashboardLayout></ProtectedRoute>} />
