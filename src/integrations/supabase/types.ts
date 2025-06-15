@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agent_performance_metrics: {
+        Row: {
+          agent_id: string
+          avg_response_time: number | null
+          conversions: number | null
+          created_at: string | null
+          date: string
+          id: string
+          leads_generated: number | null
+          properties_listed: number | null
+          revenue_generated: number | null
+          satisfaction_score: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          avg_response_time?: number | null
+          conversions?: number | null
+          created_at?: string | null
+          date: string
+          id?: string
+          leads_generated?: number | null
+          properties_listed?: number | null
+          revenue_generated?: number | null
+          satisfaction_score?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          avg_response_time?: number | null
+          conversions?: number | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          leads_generated?: number | null
+          properties_listed?: number | null
+          revenue_generated?: number | null
+          satisfaction_score?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       agent_verifications: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -42,6 +84,48 @@ export type Database = {
           status?: Database["public"]["Enums"]["verification_status"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      analytics_daily: {
+        Row: {
+          avg_property_price: number | null
+          created_at: string | null
+          date: string
+          id: string
+          new_agents: number | null
+          new_leads: number | null
+          new_properties: number | null
+          total_agents: number | null
+          total_leads: number | null
+          total_properties: number | null
+          total_revenue: number | null
+        }
+        Insert: {
+          avg_property_price?: number | null
+          created_at?: string | null
+          date: string
+          id?: string
+          new_agents?: number | null
+          new_leads?: number | null
+          new_properties?: number | null
+          total_agents?: number | null
+          total_leads?: number | null
+          total_properties?: number | null
+          total_revenue?: number | null
+        }
+        Update: {
+          avg_property_price?: number | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          new_agents?: number | null
+          new_leads?: number | null
+          new_properties?: number | null
+          total_agents?: number | null
+          total_leads?: number | null
+          total_properties?: number | null
+          total_revenue?: number | null
         }
         Relationships: []
       }
@@ -80,6 +164,138 @@ export type Database = {
             columns: ["participant2_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_ai_scores: {
+        Row: {
+          agent_id: string
+          ai_insights: Json | null
+          conversion_probability: number
+          created_at: string
+          engagement_score: number
+          financial_readiness_score: number
+          id: string
+          lead_id: string
+          scoring_factors: Json | null
+          updated_at: string
+          urgency_score: number
+        }
+        Insert: {
+          agent_id: string
+          ai_insights?: Json | null
+          conversion_probability: number
+          created_at?: string
+          engagement_score: number
+          financial_readiness_score: number
+          id?: string
+          lead_id: string
+          scoring_factors?: Json | null
+          updated_at?: string
+          urgency_score: number
+        }
+        Update: {
+          agent_id?: string
+          ai_insights?: Json | null
+          conversion_probability?: number
+          created_at?: string
+          engagement_score?: number
+          financial_readiness_score?: number
+          id?: string
+          lead_id?: string
+          scoring_factors?: Json | null
+          updated_at?: string
+          urgency_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_ai_scores_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_analytics: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          last_interaction_at: string | null
+          lead_id: string
+          most_active_hours: Json | null
+          preferred_contact_method: string | null
+          property_preferences: Json | null
+          response_time_avg: number | null
+          total_interactions: number | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          last_interaction_at?: string | null
+          lead_id: string
+          most_active_hours?: Json | null
+          preferred_contact_method?: string | null
+          property_preferences?: Json | null
+          response_time_avg?: number | null
+          total_interactions?: number | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          last_interaction_at?: string | null
+          lead_id?: string
+          most_active_hours?: Json | null
+          preferred_contact_method?: string | null
+          property_preferences?: Json | null
+          response_time_avg?: number | null
+          total_interactions?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_analytics_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_interactions: {
+        Row: {
+          created_at: string
+          id: string
+          interaction_data: Json | null
+          interaction_type: string
+          lead_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interaction_data?: Json | null
+          interaction_type: string
+          lead_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interaction_data?: Json | null
+          interaction_type?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_interactions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -123,6 +339,90 @@ export type Database = {
           match_score?: number | null
           property_type_interest?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
+        }
+        Relationships: []
+      }
+      market_data: {
+        Row: {
+          avg_days_on_market: number | null
+          avg_price: number | null
+          avg_price_per_sqm: number | null
+          created_at: string
+          data_date: string
+          demand_score: number | null
+          id: string
+          location: string
+          price_trend_percentage: number | null
+          property_type: string
+          sold_listings: number | null
+          total_listings: number | null
+        }
+        Insert: {
+          avg_days_on_market?: number | null
+          avg_price?: number | null
+          avg_price_per_sqm?: number | null
+          created_at?: string
+          data_date: string
+          demand_score?: number | null
+          id?: string
+          location: string
+          price_trend_percentage?: number | null
+          property_type: string
+          sold_listings?: number | null
+          total_listings?: number | null
+        }
+        Update: {
+          avg_days_on_market?: number | null
+          avg_price?: number | null
+          avg_price_per_sqm?: number | null
+          created_at?: string
+          data_date?: string
+          demand_score?: number | null
+          id?: string
+          location?: string
+          price_trend_percentage?: number | null
+          property_type?: string
+          sold_listings?: number | null
+          total_listings?: number | null
+        }
+        Relationships: []
+      }
+      market_trends: {
+        Row: {
+          avg_price: number | null
+          created_at: string | null
+          date: string
+          days_on_market: number | null
+          demand_score: number | null
+          id: string
+          location: string
+          price_change_percentage: number | null
+          property_type: string
+          total_listings: number | null
+        }
+        Insert: {
+          avg_price?: number | null
+          created_at?: string | null
+          date: string
+          days_on_market?: number | null
+          demand_score?: number | null
+          id?: string
+          location: string
+          price_change_percentage?: number | null
+          property_type: string
+          total_listings?: number | null
+        }
+        Update: {
+          avg_price?: number | null
+          created_at?: string | null
+          date?: string
+          days_on_market?: number | null
+          demand_score?: number | null
+          id?: string
+          location?: string
+          price_change_percentage?: number | null
+          property_type?: string
+          total_listings?: number | null
         }
         Relationships: []
       }
@@ -224,6 +524,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      price_suggestions: {
+        Row: {
+          agent_id: string
+          confidence_score: number | null
+          created_at: string
+          current_price: number
+          expected_days_to_sell: number | null
+          id: string
+          is_active: boolean | null
+          market_position: string | null
+          property_id: string
+          reasoning: Json | null
+          suggested_price: number
+        }
+        Insert: {
+          agent_id: string
+          confidence_score?: number | null
+          created_at?: string
+          current_price: number
+          expected_days_to_sell?: number | null
+          id?: string
+          is_active?: boolean | null
+          market_position?: string | null
+          property_id: string
+          reasoning?: Json | null
+          suggested_price: number
+        }
+        Update: {
+          agent_id?: string
+          confidence_score?: number | null
+          created_at?: string
+          current_price?: number
+          expected_days_to_sell?: number | null
+          id?: string
+          is_active?: boolean | null
+          market_position?: string | null
+          property_id?: string
+          reasoning?: Json | null
+          suggested_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_suggestions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -327,6 +677,47 @@ export type Database = {
         }
         Relationships: []
       }
+      property_forecasts: {
+        Row: {
+          agent_id: string
+          confidence_interval: Json | null
+          created_at: string
+          forecast_date: string
+          forecast_type: string
+          forecast_value: number | null
+          id: string
+          property_id: string
+        }
+        Insert: {
+          agent_id: string
+          confidence_interval?: Json | null
+          created_at?: string
+          forecast_date: string
+          forecast_type: string
+          forecast_value?: number | null
+          id?: string
+          property_id: string
+        }
+        Update: {
+          agent_id?: string
+          confidence_interval?: Json | null
+          created_at?: string
+          forecast_date?: string
+          forecast_type?: string
+          forecast_value?: number | null
+          id?: string
+          property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_forecasts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_image_hashes: {
         Row: {
           agent_id: string
@@ -358,6 +749,101 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      property_performance: {
+        Row: {
+          agent_id: string
+          average_time_on_page: number | null
+          created_at: string
+          demographic_data: Json | null
+          id: string
+          inquiry_count: number | null
+          peak_viewing_hours: Json | null
+          property_id: string
+          total_views: number | null
+          traffic_sources: Json | null
+          unique_views: number | null
+          updated_at: string
+          viewing_requests: number | null
+        }
+        Insert: {
+          agent_id: string
+          average_time_on_page?: number | null
+          created_at?: string
+          demographic_data?: Json | null
+          id?: string
+          inquiry_count?: number | null
+          peak_viewing_hours?: Json | null
+          property_id: string
+          total_views?: number | null
+          traffic_sources?: Json | null
+          unique_views?: number | null
+          updated_at?: string
+          viewing_requests?: number | null
+        }
+        Update: {
+          agent_id?: string
+          average_time_on_page?: number | null
+          created_at?: string
+          demographic_data?: Json | null
+          id?: string
+          inquiry_count?: number | null
+          peak_viewing_hours?: Json | null
+          property_id?: string
+          total_views?: number | null
+          traffic_sources?: Json | null
+          unique_views?: number | null
+          updated_at?: string
+          viewing_requests?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_performance_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      revenue_analytics: {
+        Row: {
+          active_subscribers: number | null
+          churned_subscribers: number | null
+          commission_revenue: number | null
+          created_at: string | null
+          date: string
+          id: string
+          new_subscribers: number | null
+          other_revenue: number | null
+          subscription_revenue: number | null
+          total_revenue: number | null
+        }
+        Insert: {
+          active_subscribers?: number | null
+          churned_subscribers?: number | null
+          commission_revenue?: number | null
+          created_at?: string | null
+          date: string
+          id?: string
+          new_subscribers?: number | null
+          other_revenue?: number | null
+          subscription_revenue?: number | null
+          total_revenue?: number | null
+        }
+        Update: {
+          active_subscribers?: number | null
+          churned_subscribers?: number | null
+          commission_revenue?: number | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          new_subscribers?: number | null
+          other_revenue?: number | null
+          subscription_revenue?: number | null
+          total_revenue?: number | null
+        }
+        Relationships: []
       }
       subscriptions: {
         Row: {
@@ -421,6 +907,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      aggregate_daily_analytics: {
+        Args: { target_date?: string }
+        Returns: undefined
+      }
       has_role: {
         Args: { role_to_check: Database["public"]["Enums"]["app_role"] }
         Returns: boolean

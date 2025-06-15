@@ -11,11 +11,13 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Settings, Building2, Bell, FileText, Home } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Building2, Bell, FileText, Home, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AppSidebar() {
   const location = useLocation();
+  const { hasRole } = useAuth();
 
   return (
     <Sidebar>
@@ -56,6 +58,16 @@ export function AppSidebar() {
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
+                    {hasRole('admin') && (
+                        <SidebarMenuItem>
+                            <SidebarMenuButton asChild isActive={location.pathname === '/analytics'}>
+                                <Link to="/analytics">
+                                    <BarChart3 size={16}/>
+                                    Analytics
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    )}
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild isActive={location.pathname === '/notifications'}>
                             <Link to="/notifications">
