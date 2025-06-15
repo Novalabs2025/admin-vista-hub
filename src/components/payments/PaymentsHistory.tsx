@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -20,6 +21,28 @@ const PaymentsHistory = () => {
   const [isInvoiceModalOpen, setInvoiceModalOpen] = React.useState(false);
   const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
   const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('realtime-payments-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payments',
+        },
+        (payload) => {
+          console.log('Payment change received!', payload);
+          queryClient.invalidateQueries({ queryKey: ['payments'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: payments, isLoading, error } = useQuery<Payment[]>({
     queryKey: ['payments'],

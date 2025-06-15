@@ -437,6 +437,7 @@ export type Database = {
         | "property_approved"
         | "property_rejected"
         | "property_submitted"
+        | "payment_success"
       payment_status: "Paid" | "Pending" | "Failed"
       property_status: "pending" | "approved" | "rejected"
       subscription_plan: "free" | "premium"
@@ -572,6 +573,7 @@ export const Constants = {
         "property_approved",
         "property_rejected",
         "property_submitted",
+        "payment_success",
       ],
       payment_status: ["Paid", "Pending", "Failed"],
       property_status: ["pending", "approved", "rejected"],
