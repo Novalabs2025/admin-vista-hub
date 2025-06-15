@@ -11,20 +11,44 @@ const AnalyticsOverview = () => {
   const { data: overviewData, isLoading } = useQuery({
     queryKey: ["analyticsOverview"],
     queryFn: async () => {
-      const [dailyData, totalStats] = await Promise.all([
+      const [dailyData, properties, agents, leads, payments] = await Promise.all([
         supabase
           .from("analytics_daily")
           .select("*")
           .order("date", { ascending: true })
           .limit(30),
-        supabase.rpc("get_platform_totals")
+        supabase
+          .from("properties")
+          .select("id"),
+        supabase
+          .from("agent_verifications")
+          .select("id")
+          .eq("status", "approved"),
+        supabase
+          .from("leads")
+          .select("id"),
+        supabase
+          .from("payments")
+          .select("amount")
+          .eq("status", "Paid")
       ]);
 
       if (dailyData.error) throw dailyData.error;
       
+      const totalStats = {
+        totalProperties: properties.data?.length || 0,
+        totalAgents: agents.data?.length || 0,
+        totalLeads: leads.data?.length || 0,
+        totalRevenue: payments.data?.reduce((sum, payment) => sum + Number(payment.amount), 0) || 0,
+        propertyGrowth: 12.5, // Mock data for now
+        agentGrowth: 8.3,
+        revenueGrowth: 15.7,
+        leadGrowth: 22.1
+      };
+      
       return {
         dailyAnalytics: dailyData.data || [],
-        totalStats: totalStats.data || {}
+        totalStats
       };
     },
   });
