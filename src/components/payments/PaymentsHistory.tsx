@@ -1,6 +1,5 @@
-
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,12 +11,15 @@ import { Search } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import InvoiceModal, { Payment } from './InvoiceModal';
+import CreatePaymentModal from './CreatePaymentModal';
 
 const PaymentsHistory = () => {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("All");
   const [selectedPayment, setSelectedPayment] = React.useState<Payment | null>(null);
   const [isInvoiceModalOpen, setInvoiceModalOpen] = React.useState(false);
+  const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
+  const queryClient = useQueryClient();
 
   const { data: payments, isLoading, error } = useQuery<Payment[]>({
     queryKey: ['payments'],
@@ -64,12 +66,22 @@ const PaymentsHistory = () => {
     setInvoiceModalOpen(true);
   };
 
+  const handlePaymentCreated = () => {
+    setCreateModalOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['payments'] });
+  };
+
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Payments</CardTitle>
-          <CardDescription>A history of all payments processed.</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Payments</CardTitle>
+              <CardDescription>A history of all payments processed.</CardDescription>
+            </div>
+            <Button onClick={() => setCreateModalOpen(true)}>Create Payment</Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between py-4">
@@ -160,6 +172,11 @@ const PaymentsHistory = () => {
         isOpen={isInvoiceModalOpen}
         onClose={() => setInvoiceModalOpen(false)}
         payment={selectedPayment}
+      />
+      <CreatePaymentModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={handlePaymentCreated}
       />
     </>
   );
