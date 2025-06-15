@@ -8,8 +8,37 @@ import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(142, 76%, 36%)', 'hsl(346, 87%, 43%)', 'hsl(262, 83%, 58%)', 'hsl(43, 96%, 56%)'];
 
+interface StatusData {
+  status: string;
+  count: number;
+  percentage: number;
+}
+
+interface TypeData {
+  type: string;
+  count: number;
+}
+
+interface PriceData {
+  range: string;
+  count: number;
+}
+
+interface MonthlyData {
+  month: string;
+  count: number;
+}
+
+interface PropertyAnalyticsData {
+  statusData: StatusData[];
+  typeData: TypeData[];
+  priceData: PriceData[];
+  monthlyData: MonthlyData[];
+  totalProperties: number;
+}
+
 const PropertyAnalytics = () => {
-  const { data: propertyData, isLoading } = useQuery({
+  const { data: propertyData, isLoading } = useQuery<PropertyAnalyticsData>({
     queryKey: ["propertyAnalytics"],
     queryFn: async () => {
       const { data: properties, error } = await supabase
@@ -19,26 +48,26 @@ const PropertyAnalytics = () => {
       if (error) throw error;
 
       // Status distribution
-      const statusDistribution = properties.reduce((acc: any, property) => {
+      const statusDistribution = properties.reduce((acc: Record<string, number>, property) => {
         acc[property.status] = (acc[property.status] || 0) + 1;
         return acc;
       }, {});
 
-      const statusData = Object.entries(statusDistribution).map(([status, count]) => ({
+      const statusData: StatusData[] = Object.entries(statusDistribution).map(([status, count]) => ({
         status,
-        count,
+        count: count as number,
         percentage: Math.round((count as number / properties.length) * 100)
       }));
 
       // Property type distribution
-      const typeDistribution = properties.reduce((acc: any, property) => {
+      const typeDistribution = properties.reduce((acc: Record<string, number>, property) => {
         acc[property.property_type] = (acc[property.property_type] || 0) + 1;
         return acc;
       }, {});
 
-      const typeData = Object.entries(typeDistribution).map(([type, count]) => ({
+      const typeData: TypeData[] = Object.entries(typeDistribution).map(([type, count]) => ({
         type,
-        count
+        count: count as number
       }));
 
       // Price ranges
@@ -50,7 +79,7 @@ const PropertyAnalytics = () => {
         { range: "Above ₦20M", min: 20000000, max: Infinity }
       ];
 
-      const priceData = priceRanges.map(range => ({
+      const priceData: PriceData[] = priceRanges.map(range => ({
         range: range.range,
         count: properties.filter(p => 
           Number(p.price) >= range.min && Number(p.price) < range.max
@@ -58,7 +87,7 @@ const PropertyAnalytics = () => {
       }));
 
       // Monthly listings
-      const monthlyListings = properties.reduce((acc: any, property) => {
+      const monthlyListings = properties.reduce((acc: Record<string, number>, property) => {
         const month = new Date(property.created_at).toLocaleDateString('en-US', { 
           year: 'numeric', 
           month: 'short' 
@@ -68,9 +97,9 @@ const PropertyAnalytics = () => {
         return acc;
       }, {});
 
-      const monthlyData = Object.entries(monthlyListings).map(([month, count]) => ({
+      const monthlyData: MonthlyData[] = Object.entries(monthlyListings).map(([month, count]) => ({
         month,
-        count
+        count: count as number
       }));
 
       return {
@@ -169,7 +198,7 @@ const PropertyAnalytics = () => {
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {propertyData?.statusData.map((entry, index) => (
+                  {(propertyData?.statusData || []).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
