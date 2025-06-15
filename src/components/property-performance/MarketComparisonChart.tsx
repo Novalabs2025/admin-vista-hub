@@ -135,7 +135,7 @@ const MarketComparisonChart = () => {
                   fontSize={12}
                 />
                 <YAxis 
-                  formatter={(value) => `₦${(value / 1000000).toFixed(1)}M`}
+                  tickFormatter={(value) => `₦${(value / 1000000).toFixed(1)}M`}
                 />
                 <Tooltip 
                   content={<ChartTooltipContent />}
@@ -204,7 +204,7 @@ const MarketComparisonChart = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis 
-                formatter={(value) => `₦${(value / 1000000).toFixed(1)}M`}
+                tickFormatter={(value) => `₦${(value / 1000000).toFixed(1)}M`}
               />
               <Tooltip 
                 content={<ChartTooltipContent />}
