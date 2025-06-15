@@ -17,7 +17,12 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { hasRole } = useAuth();
+  const { hasRole, user, roles } = useAuth();
+
+  // Debug logging to help identify role issues
+  console.log("User roles:", roles);
+  console.log("User has admin role:", hasRole('admin'));
+  console.log("Current user:", user?.email);
 
   return (
     <Sidebar>
@@ -58,16 +63,14 @@ export function AppSidebar() {
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
-                    {hasRole('admin') && (
-                        <SidebarMenuItem>
-                            <SidebarMenuButton asChild isActive={location.pathname === '/analytics'}>
-                                <Link to="/analytics">
-                                    <BarChart3 size={16}/>
-                                    Analytics
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    )}
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={location.pathname === '/analytics'}>
+                            <Link to="/analytics">
+                                <BarChart3 size={16}/>
+                                Analytics {!hasRole('admin') && "(Admin Only)"}
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild isActive={location.pathname === '/notifications'}>
                             <Link to="/notifications">
@@ -94,7 +97,7 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild isActive={location.pathname === '/settings'}>
                     <Link to="/settings">
                         <Settings size={16}/>
-                        Settings
+                        Settings {!hasRole('admin') && "(Admin Only)"}
                     </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
