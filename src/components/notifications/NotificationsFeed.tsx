@@ -1,12 +1,14 @@
 
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bell, Users, FileText, CheckCircle, XCircle, Home } from 'lucide-react';
 import { Avatar } from "@/components/ui/avatar";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
 
 type Notification = Tables<'notifications'>;
 
@@ -30,6 +32,9 @@ const getNotificationIcon = (type: Notification['type']) => {
 };
 
 const NotificationsFeed = () => {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+
     const { data: notifications, isLoading, error } = useQuery({
         queryKey: ['notifications'],
         queryFn: async (): Promise<Notification[]> => {
@@ -44,6 +49,32 @@ const NotificationsFeed = () => {
             return data || [];
         },
     });
+
+    useEffect(() => {
+        const channel = supabase
+          .channel('realtime-notifications')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'notifications',
+            },
+            (payload) => {
+              console.log('New notification received!', payload);
+              toast({
+                title: "New Notification",
+                description: (payload.new as Notification).title,
+              });
+              queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            }
+          )
+          .subscribe();
+    
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }, [queryClient, toast]);
 
     return (
         <Card>
