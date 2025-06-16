@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,7 +60,7 @@ export default function AdminInvitationsTable() {
   });
 
   const copyInvitationLink = (token: string) => {
-    const inviteUrl = `${window.location.origin}/admin/accept-invitation?token=${token}`;
+    const inviteUrl = `${window.location.origin}/accept-invitation?token=${token}`;
     navigator.clipboard.writeText(inviteUrl);
     toast({
       title: 'Link copied',
