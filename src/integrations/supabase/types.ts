@@ -54,33 +54,42 @@ export type Database = {
       agent_verifications: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
+          business_name: string | null
           cac_document_url: string | null
           created_at: string
           id: string
           id_document_url: string | null
           license_document_url: string | null
+          location: string | null
+          location_focus: string | null
           status: Database["public"]["Enums"]["verification_status"]
           updated_at: string
           user_id: string
         }
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
+          business_name?: string | null
           cac_document_url?: string | null
           created_at?: string
           id?: string
           id_document_url?: string | null
           license_document_url?: string | null
+          location?: string | null
+          location_focus?: string | null
           status?: Database["public"]["Enums"]["verification_status"]
           updated_at?: string
           user_id: string
         }
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
+          business_name?: string | null
           cac_document_url?: string | null
           created_at?: string
           id?: string
           id_document_url?: string | null
           license_document_url?: string | null
+          location?: string | null
+          location_focus?: string | null
           status?: Database["public"]["Enums"]["verification_status"]
           updated_at?: string
           user_id?: string
@@ -971,7 +980,7 @@ export type Database = {
     }
     Enums: {
       account_type: "individual" | "business"
-      app_role: "agent" | "admin"
+      app_role: "agent" | "admin" | "super_admin"
       broadcast_type:
         | "system_announcement"
         | "emergency_alert"
@@ -1112,7 +1121,7 @@ export const Constants = {
   public: {
     Enums: {
       account_type: ["individual", "business"],
-      app_role: ["agent", "admin"],
+      app_role: ["agent", "admin", "super_admin"],
       broadcast_type: [
         "system_announcement",
         "emergency_alert",
