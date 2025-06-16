@@ -9,6 +9,8 @@ interface AuthContextType {
   roles: string[];
   loading: boolean;
   hasRole: (role: string) => boolean;
+  isAdmin: () => boolean;
+  isSuperAdmin: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,6 +19,8 @@ const AuthContext = createContext<AuthContextType>({
   roles: [],
   loading: true,
   hasRole: () => false,
+  isAdmin: () => false,
+  isSuperAdmin: () => false,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -66,12 +70,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return roles.includes(role);
   };
 
+  const isAdmin = () => {
+    return roles.includes('admin') || roles.includes('super_admin');
+  };
+
+  const isSuperAdmin = () => {
+    return roles.includes('super_admin');
+  };
+
   const value = {
     user,
     session,
     loading,
     roles,
     hasRole,
+    isAdmin,
+    isSuperAdmin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

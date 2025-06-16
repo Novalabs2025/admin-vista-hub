@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_invitations: {
+        Row: {
+          accepted: boolean
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invitation_token: string
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          accepted?: boolean
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invitation_token?: string
+          invited_by: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          accepted?: boolean
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invitation_token?: string
+          invited_by?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       agent_performance_metrics: {
         Row: {
           agent_id: string
@@ -971,6 +1004,14 @@ export type Database = {
       }
       has_role: {
         Args: { role_to_check: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      is_admin_or_super: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_super_admin: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       mark_message_as_read: {
