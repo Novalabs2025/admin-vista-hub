@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Megaphone, Calendar, AlertTriangle, Info } from 'lucide-react';
+import { Megaphone, Calendar, AlertTriangle, Info, User } from 'lucide-react';
 
 interface Announcement {
   id: string;
@@ -15,6 +15,11 @@ interface Announcement {
   broadcast_type: 'system_announcement' | 'emergency_alert' | 'general_broadcast';
   created_at: string;
   is_emergency: boolean;
+  sender_id: string;
+  sender?: {
+    full_name: string | null;
+    role: string | null;
+  };
 }
 
 const SystemAnnouncements = () => {
@@ -32,7 +37,12 @@ const SystemAnnouncements = () => {
           content,
           broadcast_type,
           created_at,
-          is_emergency
+          is_emergency,
+          sender_id,
+          sender:profiles!sender_id(
+            full_name,
+            role
+          )
         `)
         .in('broadcast_type', ['system_announcement', 'emergency_alert', 'general_broadcast'])
         .order('created_at', { ascending: false })
@@ -42,6 +52,30 @@ const SystemAnnouncements = () => {
       return data || [];
     },
   });
+
+  // Set up real-time subscription for new announcements
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('announcements')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'realtime_messages',
+          filter: 'broadcast_type=in.(system_announcement,emergency_alert,general_broadcast)'
+        },
+        () => {
+          // Invalidate and refetch announcements when new ones are added
+          queryClient.invalidateQueries({ queryKey: ['system-announcements'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const getAnnouncementIcon = (announcement: Announcement) => {
     if (announcement.is_emergency || announcement.broadcast_type === 'emergency_alert') {
@@ -63,6 +97,14 @@ const SystemAnnouncements = () => {
     return <Badge variant="secondary">General</Badge>;
   };
 
+  const getSenderName = (announcement: Announcement) => {
+    return announcement.sender?.full_name || `User ${announcement.sender_id.substring(0, 8)}`;
+  };
+
+  const getSenderRole = (announcement: Announcement) => {
+    return announcement.sender?.role || 'user';
+  };
+
   const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleDateString([], {
       year: 'numeric',
@@ -73,13 +115,20 @@ const SystemAnnouncements = () => {
     });
   };
 
+  const sortedAnnouncements = announcements.sort((a, b) => {
+    // Sort emergency alerts first, then by date
+    if (a.is_emergency && !b.is_emergency) return -1;
+    if (!a.is_emergency && b.is_emergency) return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Megaphone className="h-5 w-5" />
-            System Announcements
+            System Announcements ({announcements.length})
             {!isAdmin && (
               <Badge variant="outline" className="ml-auto">
                 View Only
@@ -93,9 +142,9 @@ const SystemAnnouncements = () => {
               <div className="flex justify-center py-8">
                 <div className="text-muted-foreground">Loading announcements...</div>
               </div>
-            ) : announcements.length > 0 ? (
+            ) : sortedAnnouncements.length > 0 ? (
               <div className="space-y-4">
-                {announcements.map((announcement) => (
+                {sortedAnnouncements.map((announcement) => (
                   <div
                     key={announcement.id}
                     className={`border rounded-lg p-4 ${
@@ -109,18 +158,27 @@ const SystemAnnouncements = () => {
                     <div className="flex items-start gap-3">
                       {getAnnouncementIcon(announcement)}
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           {announcement.title && (
                             <h3 className="font-semibold text-lg">{announcement.title}</h3>
                           )}
                           {getAnnouncementBadge(announcement)}
                         </div>
-                        <p className="text-gray-700 mb-3 leading-relaxed">
+                        <p className="text-gray-700 mb-3 leading-relaxed whitespace-pre-wrap">
                           {announcement.content}
                         </p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          <span>{formatDate(announcement.created_at)}</span>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            <span>{getSenderName(announcement)}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {getSenderRole(announcement)}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            <span>{formatDate(announcement.created_at)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>

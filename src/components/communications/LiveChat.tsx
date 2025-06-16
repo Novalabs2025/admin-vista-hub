@@ -8,14 +8,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Send, MessageSquare, Users } from 'lucide-react';
+import { Send, MessageSquare, Users, Online, Clock } from 'lucide-react';
 
 interface Message {
   id: string;
   content: string;
   created_at: string;
   sender_id: string;
+  sender?: {
+    full_name: string | null;
+    role: string | null;
+  };
+}
+
+interface OnlineUser {
+  user_id: string;
+  full_name: string | null;
+  role: string | null;
+  last_seen: string;
 }
 
 const LiveChat = () => {
@@ -25,6 +37,7 @@ const LiveChat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const [newMessage, setNewMessage] = useState('');
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['chat-messages'],
@@ -35,7 +48,11 @@ const LiveChat = () => {
           id,
           content,
           created_at,
-          sender_id
+          sender_id,
+          sender:profiles!sender_id(
+            full_name,
+            role
+          )
         `)
         .eq('message_type', 'chat')
         .order('created_at', { ascending: true })
@@ -44,6 +61,7 @@ const LiveChat = () => {
       if (error) throw error;
       return data || [];
     },
+    refetchInterval: 30000, // Refetch every 30 seconds as fallback
   });
 
   const sendMessageMutation = useMutation({
@@ -55,7 +73,16 @@ const LiveChat = () => {
           content,
           message_type: 'chat'
         })
-        .select()
+        .select(`
+          id,
+          content,
+          created_at,
+          sender_id,
+          sender:profiles!sender_id(
+            full_name,
+            role
+          )
+        `)
         .single();
 
       if (error) throw error;
@@ -69,13 +96,13 @@ const LiveChat = () => {
       console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to send message",
+        description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  // Set up real-time subscription
+  // Set up real-time subscription for new messages
   useEffect(() => {
     const channel = supabase
       .channel('chat-messages')
@@ -87,7 +114,8 @@ const LiveChat = () => {
           table: 'realtime_messages',
           filter: 'message_type=eq.chat'
         },
-        () => {
+        (payload) => {
+          console.log('New message received:', payload);
           queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
         }
       )
@@ -97,6 +125,52 @@ const LiveChat = () => {
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
+
+  // Set up presence tracking for online users
+  useEffect(() => {
+    const presenceChannel = supabase.channel('chat-presence');
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const users: OnlineUser[] = [];
+        
+        Object.keys(state).forEach(userId => {
+          const presence = state[userId][0];
+          if (presence) {
+            users.push({
+              user_id: userId,
+              full_name: presence.full_name,
+              role: presence.role,
+              last_seen: presence.online_at
+            });
+          }
+        });
+        
+        setOnlineUsers(users);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED' && user) {
+          // Get user profile for presence
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, role')
+            .eq('id', user.id)
+            .single();
+
+          await presenceChannel.track({
+            user_id: user.id,
+            full_name: profile?.full_name || 'Unknown User',
+            role: profile?.role || 'user',
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [user]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -117,21 +191,61 @@ const LiveChat = () => {
     });
   };
 
-  const getUserInitials = (userId: string) => {
-    // Simple fallback - you might want to fetch user data
-    return userId.substring(0, 2).toUpperCase();
+  const getUserDisplayName = (message: Message) => {
+    if (message.sender?.full_name) {
+      return message.sender.full_name;
+    }
+    return `User ${message.sender_id.substring(0, 8)}`;
+  };
+
+  const getUserRole = (message: Message) => {
+    return message.sender?.role || 'user';
+  };
+
+  const getUserInitials = (message: Message) => {
+    const name = getUserDisplayName(message);
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   };
 
   return (
     <div className="space-y-4">
+      {/* Online Users Panel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Users className="h-4 w-4" />
+            Online Users ({onlineUsers.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-wrap gap-2">
+            {onlineUsers.map((onlineUser) => (
+              <div key={onlineUser.user_id} className="flex items-center gap-2 bg-green-50 px-2 py-1 rounded-md">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-sm font-medium">
+                  {onlineUser.full_name || 'Unknown User'}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {onlineUser.role}
+                </Badge>
+              </div>
+            ))}
+            {onlineUsers.length === 0 && (
+              <span className="text-sm text-muted-foreground">No users online</span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Chat Messages */}
       <Card className="h-[600px] flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Live Chat
             <span className="ml-auto text-sm font-normal text-muted-foreground flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              Active
+              <Online className="h-4 w-4 text-green-500" />
+              Connected
             </span>
           </CardTitle>
         </CardHeader>
@@ -153,7 +267,7 @@ const LiveChat = () => {
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="text-xs">
-                        {getUserInitials(message.sender_id)}
+                        {getUserInitials(message)}
                       </AvatarFallback>
                     </Avatar>
                     <div
@@ -163,14 +277,32 @@ const LiveChat = () => {
                           : 'bg-muted'
                       }`}
                     >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-medium ${
+                          message.sender_id === user?.id
+                            ? 'text-primary-foreground/90'
+                            : 'text-muted-foreground'
+                        }`}>
+                          {getUserDisplayName(message)}
+                        </span>
+                        <Badge 
+                          variant={getUserRole(message) === 'admin' ? 'default' : 'secondary'}
+                          className="text-xs px-1 py-0"
+                        >
+                          {getUserRole(message)}
+                        </Badge>
+                      </div>
                       <p className="text-sm">{message.content}</p>
-                      <p className={`text-xs mt-1 ${
-                        message.sender_id === user?.id
-                          ? 'text-primary-foreground/70'
-                          : 'text-muted-foreground'
-                      }`}>
-                        {formatTime(message.created_at)}
-                      </p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <Clock className="h-3 w-3" />
+                        <p className={`text-xs ${
+                          message.sender_id === user?.id
+                            ? 'text-primary-foreground/70'
+                            : 'text-muted-foreground'
+                        }`}>
+                          {formatTime(message.created_at)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -192,6 +324,7 @@ const LiveChat = () => {
                 placeholder="Type your message..."
                 disabled={sendMessageMutation.isPending}
                 className="flex-1"
+                maxLength={1000}
               />
               <Button
                 type="submit"
@@ -201,6 +334,9 @@ const LiveChat = () => {
                 <Send className="h-4 w-4" />
               </Button>
             </form>
+            <p className="text-xs text-muted-foreground mt-1">
+              {newMessage.length}/1000 characters
+            </p>
           </div>
         </CardContent>
       </Card>

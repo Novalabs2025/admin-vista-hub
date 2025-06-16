@@ -8,8 +8,23 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { AlertTriangle, Loader2, Send } from 'lucide-react';
+import { AlertTriangle, Loader2, Send, Calendar, User, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
+interface EmergencyAlert {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  is_emergency: boolean;
+  sender_id: string;
+  sender?: {
+    full_name: string | null;
+    role: string | null;
+  };
+}
 
 const EmergencyAlerts = () => {
   const { user } = useAuth();
@@ -35,7 +50,18 @@ const EmergencyAlerts = () => {
           content: alertData.content,
           is_emergency: true
         })
-        .select()
+        .select(`
+          id,
+          title,
+          content,
+          created_at,
+          is_emergency,
+          sender_id,
+          sender:profiles!sender_id(
+            full_name,
+            role
+          )
+        `)
         .single();
 
       if (error) throw error;
@@ -60,9 +86,36 @@ const EmergencyAlerts = () => {
     },
   });
 
-  const { data: emergencyAlerts, isLoading } = useQuery({
+  const deleteAlertMutation = useMutation({
+    mutationFn: async (alertId: string) => {
+      const { error } = await supabase
+        .from('realtime_messages')
+        .delete()
+        .eq('id', alertId)
+        .eq('sender_id', user?.id); // Only allow deleting own alerts
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Alert Deleted",
+        description: "The emergency alert has been removed",
+      });
+      queryClient.invalidateQueries({ queryKey: ['emergency-alerts'] });
+    },
+    onError: (error) => {
+      console.error('Error deleting alert:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete alert",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: emergencyAlerts = [], isLoading } = useQuery({
     queryKey: ['emergency-alerts'],
-    queryFn: async () => {
+    queryFn: async (): Promise<EmergencyAlert[]> => {
       const { data, error } = await supabase
         .from('realtime_messages')
         .select(`
@@ -71,7 +124,11 @@ const EmergencyAlerts = () => {
           content,
           created_at,
           is_emergency,
-          sender_id
+          sender_id,
+          sender:profiles!sender_id(
+            full_name,
+            role
+          )
         `)
         .eq('message_type', 'emergency')
         .eq('is_emergency', true)
@@ -99,6 +156,20 @@ const EmergencyAlerts = () => {
     });
   };
 
+  const getSenderName = (alert: EmergencyAlert) => {
+    return alert.sender?.full_name || `User ${alert.sender_id.substring(0, 8)}`;
+  };
+
+  const formatDateTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -108,6 +179,7 @@ const EmergencyAlerts = () => {
         </div>
         <p className="text-red-700 text-sm">
           Emergency alerts are sent immediately to all users and should only be used for urgent situations.
+          All emergency alerts are logged and tracked for accountability.
         </p>
       </div>
 
@@ -127,7 +199,9 @@ const EmergencyAlerts = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="border-red-300 focus:border-red-500"
+              maxLength={100}
             />
+            <p className="text-xs text-muted-foreground">{title.length}/100 characters</p>
           </div>
 
           <div className="space-y-2">
@@ -139,7 +213,9 @@ const EmergencyAlerts = () => {
               onChange={(e) => setContent(e.target.value)}
               rows={4}
               className="border-red-300 focus:border-red-500"
+              maxLength={1000}
             />
+            <p className="text-xs text-muted-foreground">{content.length}/1000 characters</p>
           </div>
 
           <Button
@@ -166,7 +242,7 @@ const EmergencyAlerts = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Recent Emergency Alerts
+            Recent Emergency Alerts ({emergencyAlerts.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -180,23 +256,59 @@ const EmergencyAlerts = () => {
                 <div key={alert.id} className="border-l-4 border-red-500 bg-red-50 p-4 rounded">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      {alert.title && (
-                        <h4 className="font-semibold text-red-800 mb-1">{alert.title}</h4>
-                      )}
-                      <p className="text-red-700 mb-2">{alert.content}</p>
-                      <div className="flex items-center gap-2 text-sm text-red-600">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span>Emergency Alert</span>
-                        <span>•</span>
-                        <span>{new Date(alert.created_at).toLocaleString()}</span>
+                      <div className="flex items-center gap-2 mb-2">
+                        {alert.title && (
+                          <h4 className="font-semibold text-red-800">{alert.title}</h4>
+                        )}
+                        <Badge variant="destructive">Emergency</Badge>
+                      </div>
+                      <p className="text-red-700 mb-3 whitespace-pre-wrap">{alert.content}</p>
+                      <div className="flex items-center gap-4 text-sm text-red-600">
+                        <div className="flex items-center gap-1">
+                          <User className="h-4 w-4" />
+                          <span>{getSenderName(alert)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{formatDateTime(alert.created_at)}</span>
+                        </div>
                       </div>
                     </div>
+                    {alert.sender_id === user?.id && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Emergency Alert</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this emergency alert? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteAlertMutation.mutate(alert.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-4">No emergency alerts sent</p>
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <AlertTriangle className="h-12 w-12 mb-4 opacity-50" />
+              <p>No emergency alerts sent</p>
+            </div>
           )}
         </CardContent>
       </Card>
