@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -190,7 +189,7 @@ const PaymentsHistory = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">₦{stats.totalRevenue.toLocaleString()}</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-blue-500" />
               </div>
@@ -380,7 +379,7 @@ const PaymentsHistory = () => {
                         </TableCell>
                         <TableCell className="font-medium">{payment.agent}</TableCell>
                         <TableCell className="font-semibold text-green-600">
-                          ${payment.amount.toFixed(2)}
+                          ₦{payment.amount.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-gray-600">{payment.date}</TableCell>
                         <TableCell>

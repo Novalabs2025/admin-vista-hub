@@ -50,7 +50,7 @@ const InvoiceModal = ({ payment, isOpen, onClose }: InvoiceModalProps) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Amount</p>
-                <p className="text-sm text-muted-foreground">${payment.amount.toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground">₦{payment.amount.toFixed(2)}</p>
               </div>
               <div className="space-y-1 text-right">
                 <p className="text-sm font-medium">Payment Method</p>

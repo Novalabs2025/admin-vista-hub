@@ -150,9 +150,9 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ isOpen, onClose
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount ($)</FormLabel>
+                  <FormLabel>Amount (₦)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 500.00" {...field} step="0.01" />
+                    <Input type="number" placeholder="e.g., 50000.00" {...field} step="0.01" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
