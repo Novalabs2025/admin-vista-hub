@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Send, MessageSquare, Users, Online, Clock } from 'lucide-react';
+import { Send, MessageSquare, Users, Wifi, Clock } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -20,7 +20,7 @@ interface Message {
   sender?: {
     full_name: string | null;
     role: string | null;
-  };
+  } | null;
 }
 
 interface OnlineUser {
@@ -136,13 +136,14 @@ const LiveChat = () => {
         const users: OnlineUser[] = [];
         
         Object.keys(state).forEach(userId => {
-          const presence = state[userId][0];
-          if (presence) {
+          const presences = state[userId];
+          if (presences && presences.length > 0) {
+            const presence = presences[0] as any;
             users.push({
               user_id: userId,
-              full_name: presence.full_name,
-              role: presence.role,
-              last_seen: presence.online_at
+              full_name: presence.full_name || null,
+              role: presence.role || null,
+              last_seen: presence.online_at || new Date().toISOString()
             });
           }
         });
@@ -161,7 +162,7 @@ const LiveChat = () => {
           await presenceChannel.track({
             user_id: user.id,
             full_name: profile?.full_name || 'Unknown User',
-            role: profile?.role || 'user',
+            role: profile?.role || 'admin',
             online_at: new Date().toISOString(),
           });
         }
@@ -199,7 +200,7 @@ const LiveChat = () => {
   };
 
   const getUserRole = (message: Message) => {
-    return message.sender?.role || 'user';
+    return message.sender?.role || 'admin';
   };
 
   const getUserInitials = (message: Message) => {
@@ -244,7 +245,7 @@ const LiveChat = () => {
             <MessageSquare className="h-5 w-5" />
             Live Chat
             <span className="ml-auto text-sm font-normal text-muted-foreground flex items-center gap-1">
-              <Online className="h-4 w-4 text-green-500" />
+              <Wifi className="h-4 w-4 text-green-500" />
               Connected
             </span>
           </CardTitle>

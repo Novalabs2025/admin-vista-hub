@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,11 +18,12 @@ interface Announcement {
   sender?: {
     full_name: string | null;
     role: string | null;
-  };
+  } | null;
 }
 
 const SystemAnnouncements = () => {
   const { hasRole } = useAuth();
+  const queryClient = useQueryClient();
   const isAdmin = hasRole('admin');
 
   const { data: announcements = [], isLoading } = useQuery({
@@ -75,7 +75,7 @@ const SystemAnnouncements = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [queryClient]);
 
   const getAnnouncementIcon = (announcement: Announcement) => {
     if (announcement.is_emergency || announcement.broadcast_type === 'emergency_alert') {
@@ -102,7 +102,7 @@ const SystemAnnouncements = () => {
   };
 
   const getSenderRole = (announcement: Announcement) => {
-    return announcement.sender?.role || 'user';
+    return announcement.sender?.role || 'admin';
   };
 
   const formatDate = (timestamp: string) => {
