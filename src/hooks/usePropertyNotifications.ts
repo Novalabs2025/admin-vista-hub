@@ -24,7 +24,7 @@ export const usePropertyNotifications = () => {
           const { error } = await supabase
             .from('notifications')
             .insert({
-              type: 'property_submitted',
+              type: 'system_update', // Using valid enum value
               title: 'New Property Submission',
               description: `A new ${newProperty.property_type} property has been submitted for approval at ${newProperty.address}`,
               user_id: null // System-wide notification for admins
@@ -54,7 +54,7 @@ export const usePropertyNotifications = () => {
         
         // Create notifications for status changes
         if (oldProperty.status !== updatedProperty.status) {
-          let notificationType = '';
+          let notificationType: 'property_approved' | 'property_rejected' | 'system_update' = 'system_update';
           let title = '';
           let description = '';
           
@@ -68,7 +68,7 @@ export const usePropertyNotifications = () => {
             description = `Your property at ${updatedProperty.address} has been rejected. ${updatedProperty.rejection_reason || 'Please contact support for details.'}`;
           }
           
-          if (notificationType) {
+          if (notificationType !== 'system_update') {
             try {
               const { error } = await supabase
                 .from('notifications')
