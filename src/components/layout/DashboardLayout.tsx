@@ -1,17 +1,25 @@
 
-import { AppSidebar } from "@/components/AppSidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { ReactNode } from 'react';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
+import { useSystemNotifications } from '@/hooks/useSystemNotifications';
 
-const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
+interface DashboardLayoutProps {
+  children: ReactNode;
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  // Initialize all notification systems
+  useSystemNotifications();
+
   return (
     <SidebarProvider>
-      <div className="min-h-screen w-full bg-background text-foreground flex">
+      <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <div className="flex-1 flex flex-col">
-            {children}
-        </div>
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
       </div>
     </SidebarProvider>
   );
-};
-export default DashboardLayout;
+}

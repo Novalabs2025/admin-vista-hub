@@ -1,12 +1,9 @@
-
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from "@/components/ui/use-toast";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -14,34 +11,23 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
-export function SignUpForm() {
-  const { toast } = useToast();
+// Component is deprecated - signup now handled through admin invitations
+function DeprecatedSignUpForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { fullName: '', email: '', password: '' },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const { error } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
-      options: {
-        data: {
-          full_name: values.fullName,
-        },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    if (error) {
-      toast({ title: "Error signing up", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Check your email for a confirmation link." });
-    }
+  function onSubmit() {
+    // No-op - signup disabled
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="text-center p-4 bg-gray-100 rounded-lg">
+          <p className="text-gray-600">Public signup is disabled. Please contact an administrator for access.</p>
+        </div>
         <FormField
           control={form.control}
           name="fullName"
@@ -49,7 +35,7 @@ export function SignUpForm() {
             <FormItem>
               <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input placeholder="John Doe" {...field} disabled />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -62,7 +48,7 @@ export function SignUpForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="m@example.com" {...field} />
+                <Input placeholder="m@example.com" {...field} disabled />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -75,14 +61,18 @@ export function SignUpForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" {...field} />
+                <Input type="password" {...field} disabled />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">Sign Up</Button>
+        <Button type="submit" className="w-full" disabled>
+          Contact Administrator
+        </Button>
       </form>
     </Form>
   );
 }
+
+export { DeprecatedSignUpForm as SignUpForm };

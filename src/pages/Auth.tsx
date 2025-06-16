@@ -1,8 +1,6 @@
 
 import { LoginForm } from '@/components/auth/LoginForm';
-import { SignUpForm } from '@/components/auth/SignUpForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Shield, Users, TrendingUp } from 'lucide-react';
 
 export default function AuthPage() {
@@ -91,40 +89,17 @@ export default function AuthPage() {
             <p className="text-gray-600">Welcome back! Please sign in to continue.</p>
           </div>
 
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login" className="text-sm font-medium">Sign In</TabsTrigger>
-              <TabsTrigger value="signup" className="text-sm font-medium">Create Account</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <Card className="shadow-xl border-0">
-                <CardHeader className="space-y-2 pb-6">
-                  <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
-                  <CardDescription className="text-center text-gray-600">
-                    Sign in to your account to continue
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <LoginForm />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <Card className="shadow-xl border-0">
-                <CardHeader className="space-y-2 pb-6">
-                  <CardTitle className="text-2xl font-bold text-center">Get Started</CardTitle>
-                  <CardDescription className="text-center text-gray-600">
-                    Create your account to access all features
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <SignUpForm />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <Card className="shadow-xl border-0">
+            <CardHeader className="space-y-2 pb-6">
+              <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
+              <CardDescription className="text-center text-gray-600">
+                Sign in to your admin account to continue
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <LoginForm />
+            </CardContent>
+          </Card>
 
           {/* Footer */}
           <div className="mt-8 text-center text-sm text-gray-500">
