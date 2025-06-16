@@ -21,8 +21,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { ChevronDown, Home, DollarSign, Key } from "lucide-react";
+
+type PropertyStatus = "pending" | "approved" | "rejected" | "rented" | "sold" | "leased";
 
 interface AgentPropertyStatusControlProps {
   propertyId: string;
@@ -37,7 +39,7 @@ const AgentPropertyStatusControl = ({
 }: AgentPropertyStatusControlProps) => {
   const [statusChangeProperty, setStatusChangeProperty] = useState<{
     id: string;
-    newStatus: string;
+    newStatus: PropertyStatus;
   } | null>(null);
   const [statusChangeReason, setStatusChangeReason] = useState("");
   const queryClient = useQueryClient();
@@ -50,7 +52,7 @@ const AgentPropertyStatusControl = ({
       reason,
     }: {
       propertyId: string;
-      status: string;
+      status: PropertyStatus;
       reason: string;
     }) => {
       const { error } = await supabase
@@ -82,7 +84,7 @@ const AgentPropertyStatusControl = ({
     },
   });
 
-  const handleStatusChange = (newStatus: string) => {
+  const handleStatusChange = (newStatus: PropertyStatus) => {
     setStatusChangeProperty({ id: propertyId, newStatus });
   };
 
