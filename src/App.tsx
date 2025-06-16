@@ -28,7 +28,7 @@ function App() {
         <Router>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/admin/accept-invitation" element={<AcceptInvitationPage />} />
+            <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
             <Route
               path="/*"
               element={

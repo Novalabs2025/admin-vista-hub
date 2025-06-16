@@ -27,7 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { email, role, invitationToken, inviterName }: InvitationEmailRequest = await req.json();
 
-    const inviteUrl = `${req.headers.get('origin') || 'https://your-app.com'}/admin/accept-invitation?token=${invitationToken}`;
+    const inviteUrl = `${req.headers.get('origin') || 'https://your-app.com'}/accept-invitation?token=${invitationToken}`;
     
     const emailResponse = await resend.emails.send({
       from: "SettleSmart AI <onboarding@resend.dev>",
