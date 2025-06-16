@@ -53,13 +53,10 @@ const AgentManagementTable = () => {
       queryFn: async (): Promise<FetchedAgent[]> => {
         console.log('Fetching agents data...');
         
-        // Fetch agent verifications with profiles
+        // Fetch agent verifications
         const { data: verifications, error: verificationsError } = await supabase
           .from('agent_verifications')
-          .select(`
-            *,
-            profiles!inner(*)
-          `);
+          .select('*');
 
         if (verificationsError) {
           console.error('Error fetching verifications:', verificationsError);
@@ -69,8 +66,26 @@ const AgentManagementTable = () => {
 
         console.log('Verifications fetched:', verifications.length);
 
+        // Get user IDs from verifications
         const userIds = verifications.map(v => v.user_id);
         if (userIds.length === 0) return [];
+
+        // Fetch profiles separately
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          throw new Error(profilesError.message);
+        }
+
+        // Create a map of profiles by user ID for easy lookup
+        const profilesMap = new Map();
+        profiles?.forEach(profile => {
+          profilesMap.set(profile.id, profile);
+        });
 
         // Fetch additional data for each agent
         const [propertiesResponse, leadsResponse, paymentsResponse] = await Promise.all([
@@ -116,7 +131,7 @@ const AgentManagementTable = () => {
         } as const;
 
         return verifications.map(verification => {
-          const profile = verification.profiles;
+          const profile = profilesMap.get(verification.user_id);
           const statusKey = verification.status as keyof typeof statusMap;
 
           return {
