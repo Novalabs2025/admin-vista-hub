@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Payments from "./pages/Payments";
 import Analytics from "./pages/Analytics";
 import PropertyPerformance from "./pages/PropertyPerformance";
+import Communications from "./pages/Communications";
 import { AuthProvider } from "./contexts/AuthContext";
 import AuthPage from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -36,8 +37,9 @@ const App = () => (
             <Route path="/agents" element={<ProtectedRoute><DashboardLayout><Agents /></DashboardLayout></ProtectedRoute>} />
             <Route path="/analytics" element={<RoleProtectedRoute allowedRoles={['admin']}><DashboardLayout><Analytics /></DashboardLayout></RoleProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><DashboardLayout><Notifications /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/communications" element={<ProtectedRoute><DashboardLayout><Communications /></DashboardLayout></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><DashboardLayout><Payments /></DashboardLayout></ProtectedRoute>} />
-            <Route path="/settings" element={<RoleProtectedRoute allowedRoles={['admin']}><DashboardLayout><Settings /></DashboardLayout></RoleProtectedRoute>} />
+            <Route path="/settings" element={<RoleProtectedRoute allowedRoles={['admin']}><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><DashboardLayout><NotFound /></DashboardLayout></ProtectedRoute>} />
           </Routes>

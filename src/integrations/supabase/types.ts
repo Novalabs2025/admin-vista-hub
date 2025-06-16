@@ -806,6 +806,51 @@ export type Database = {
           },
         ]
       }
+      realtime_messages: {
+        Row: {
+          broadcast_type: Database["public"]["Enums"]["broadcast_type"] | null
+          content: string
+          created_at: string
+          id: string
+          is_emergency: boolean
+          is_read: boolean
+          message_type: Database["public"]["Enums"]["message_type"]
+          metadata: Json | null
+          recipient_id: string | null
+          sender_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          broadcast_type?: Database["public"]["Enums"]["broadcast_type"] | null
+          content: string
+          created_at?: string
+          id?: string
+          is_emergency?: boolean
+          is_read?: boolean
+          message_type?: Database["public"]["Enums"]["message_type"]
+          metadata?: Json | null
+          recipient_id?: string | null
+          sender_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          broadcast_type?: Database["public"]["Enums"]["broadcast_type"] | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_emergency?: boolean
+          is_read?: boolean
+          message_type?: Database["public"]["Enums"]["message_type"]
+          metadata?: Json | null
+          recipient_id?: string | null
+          sender_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       revenue_analytics: {
         Row: {
           active_subscribers: number | null
@@ -911,15 +956,28 @@ export type Database = {
         Args: { target_date?: string }
         Returns: undefined
       }
+      get_unread_message_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       has_role: {
         Args: { role_to_check: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
+      }
+      mark_message_as_read: {
+        Args: { message_id: string }
+        Returns: undefined
       }
     }
     Enums: {
       account_type: "individual" | "business"
       app_role: "agent" | "admin"
+      broadcast_type:
+        | "system_announcement"
+        | "emergency_alert"
+        | "general_broadcast"
       lead_status: "new" | "contacted" | "qualified" | "unqualified" | "closed"
+      message_type: "chat" | "broadcast" | "emergency" | "announcement"
       notification_type:
         | "new_agent_pending_approval"
         | "system_update"
@@ -1055,7 +1113,13 @@ export const Constants = {
     Enums: {
       account_type: ["individual", "business"],
       app_role: ["agent", "admin"],
+      broadcast_type: [
+        "system_announcement",
+        "emergency_alert",
+        "general_broadcast",
+      ],
       lead_status: ["new", "contacted", "qualified", "unqualified", "closed"],
+      message_type: ["chat", "broadcast", "emergency", "announcement"],
       notification_type: [
         "new_agent_pending_approval",
         "system_update",

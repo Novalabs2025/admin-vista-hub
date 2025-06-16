@@ -11,7 +11,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Settings, Building2, Bell, FileText, Home, BarChart3, TrendingUp } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Building2, Bell, FileText, Home, BarChart3, TrendingUp, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -76,6 +76,14 @@ export function AppSidebar() {
                             <Link to="/analytics">
                                 <BarChart3 size={16}/>
                                 Analytics {!hasRole('admin') && "(Admin Only)"}
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={location.pathname === '/communications'}>
+                            <Link to="/communications">
+                                <MessageSquare size={16}/>
+                                Communications
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
