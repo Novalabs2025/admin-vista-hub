@@ -121,7 +121,7 @@ const AgentManagementTable = () => {
 
         paymentsResponse.data?.forEach(payment => {
           const total = revenueByAgent.get(payment.user_id) || 0;
-          revenueByAgent.set(payment.user_id, total + Number(payment.amount));
+          revenueByAgent.set(payment.user_id, total + Number(payment.amount || 0));
         });
 
         const statusMap = {
@@ -133,6 +133,11 @@ const AgentManagementTable = () => {
         return verifications.map(verification => {
           const profile = profilesMap.get(verification.user_id);
           const statusKey = verification.status as keyof typeof statusMap;
+
+          // Ensure all numeric values are properly defined
+          const propertiesCount = Number(propertiesByAgent.get(verification.user_id) || 0);
+          const leadsCount = Number(leadsByAgent.get(verification.user_id) || 0);
+          const totalRevenue = Number(revenueByAgent.get(verification.user_id) || 0);
 
           return {
             id: verification.user_id,
@@ -156,9 +161,9 @@ const AgentManagementTable = () => {
               idCard: verification.id_document_url ?? null,
               businessLicense: verification.license_document_url ?? null,
             },
-            propertiesCount: propertiesByAgent.get(verification.user_id) || 0,
-            leadsCount: leadsByAgent.get(verification.user_id) || 0,
-            totalRevenue: revenueByAgent.get(verification.user_id) || 0,
+            propertiesCount,
+            leadsCount,
+            totalRevenue,
           };
         });
       }
@@ -386,7 +391,7 @@ const AgentManagementTable = () => {
                                                       <span>{agent.leadsCount} Leads</span>
                                                   </div>
                                                   <p className="text-xs text-muted-foreground">
-                                                      Revenue: ₦{agent.totalRevenue.toLocaleString()}
+                                                      Revenue: ₦{(agent.totalRevenue || 0).toLocaleString()}
                                                   </p>
                                               </div>
                                           </TableCell>
