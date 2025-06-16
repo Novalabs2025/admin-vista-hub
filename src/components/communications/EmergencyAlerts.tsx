@@ -1,26 +1,66 @@
 
 import React, { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { AlertTriangle, Loader2, Send } from 'lucide-react';
 
 const EmergencyAlerts = () => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
 
-  // Fetch recent emergency alerts
-  const { data: alerts = [] } = useQuery({
+  const sendEmergencyAlertMutation = useMutation({
+    mutationFn: async (alertData: {
+      title: string;
+      content: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('realtime_messages')
+        .insert({
+          sender_id: user?.id || '',
+          recipient_id: null, // null for broadcast messages
+          message_type: 'emergency',
+          broadcast_type: 'emergency_alert',
+          title: alertData.title,
+          content: alertData.content,
+          is_emergency: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Emergency Alert Sent",
+        description: "Emergency alert has been sent to all users",
+      });
+      setTitle('');
+      setContent('');
+      queryClient.invalidateQueries({ queryKey: ['emergency-alerts'] });
+    },
+    onError: (error) => {
+      console.error('Error sending emergency alert:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send emergency alert",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: emergencyAlerts, isLoading } = useQuery({
     queryKey: ['emergency-alerts'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -30,72 +70,47 @@ const EmergencyAlerts = () => {
           title,
           content,
           created_at,
-          profiles:sender_id (
-            full_name
-          )
+          is_emergency,
+          sender_id
         `)
         .eq('message_type', 'emergency')
+        .eq('is_emergency', true)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
-  // Send emergency alert mutation
-  const sendAlertMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from('realtime_messages')
-        .insert({
-          sender_id: user?.id,
-          title,
-          content,
-          message_type: 'emergency',
-          broadcast_type: 'emergency_alert',
-          is_emergency: true,
-          recipient_id: null // Send to all users
-        });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setTitle('');
-      setContent('');
-      queryClient.invalidateQueries({ queryKey: ['emergency-alerts'] });
+  const handleSendAlert = () => {
+    if (!content.trim()) {
       toast({
-        title: 'Emergency alert sent',
-        description: 'Emergency alert has been sent to all users immediately.',
+        title: "Error",
+        description: "Please enter an alert message",
+        variant: "destructive",
       });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error sending emergency alert',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
+      return;
+    }
 
-  const handleSendAlert = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
-    sendAlertMutation.mutate();
+    sendEmergencyAlertMutation.mutate({
+      title,
+      content,
+    });
   };
 
   return (
     <div className="space-y-6">
-      {/* Warning */}
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          Emergency alerts will be sent to all users immediately and marked as high priority. 
-          Use only for urgent situations that require immediate attention.
-        </AlertDescription>
-      </Alert>
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-red-800 mb-2">
+          <AlertTriangle className="h-5 w-5" />
+          <h3 className="font-semibold">Emergency Alert System</h3>
+        </div>
+        <p className="text-red-700 text-sm">
+          Emergency alerts are sent immediately to all users and should only be used for urgent situations.
+        </p>
+      </div>
 
-      {/* Send Emergency Alert Form */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-red-600">
@@ -103,72 +118,86 @@ const EmergencyAlerts = () => {
             Send Emergency Alert
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSendAlert} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Alert Title</label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Emergency alert title..."
-                required
-              />
-            </div>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="alert-title">Alert Title</Label>
+            <Input
+              id="alert-title"
+              placeholder="URGENT: Enter alert title..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="border-red-300 focus:border-red-500"
+            />
+          </div>
 
-            <div>
-              <label className="text-sm font-medium">Alert Message</label>
-              <Textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Describe the emergency situation and required actions..."
-                rows={4}
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="alert-content">Alert Message</Label>
+            <Textarea
+              id="alert-content"
+              placeholder="Enter emergency alert details..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={4}
+              className="border-red-300 focus:border-red-500"
+            />
+          </div>
 
-            <Button 
-              type="submit" 
-              disabled={!title.trim() || !content.trim() || sendAlertMutation.isPending}
-              className="w-full bg-red-600 hover:bg-red-700"
-            >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Send Emergency Alert
-            </Button>
-          </form>
+          <Button
+            onClick={handleSendAlert}
+            disabled={sendEmergencyAlertMutation.isPending || !content.trim()}
+            className="w-full bg-red-600 hover:bg-red-700"
+          >
+            {sendEmergencyAlertMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending Alert...
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Send Emergency Alert
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 
-      {/* Recent Emergency Alerts */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Emergency Alerts</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Recent Emergency Alerts
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {alerts.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">
-                No emergency alerts sent yet
-              </p>
-            ) : (
-              alerts.map((alert) => (
-                <div key={alert.id} className="border-l-4 border-l-red-500 bg-red-50 rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-red-800">{alert.title}</h4>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="destructive">Emergency</Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(alert.created_at).toLocaleDateString()}
-                      </span>
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : emergencyAlerts && emergencyAlerts.length > 0 ? (
+            <div className="space-y-4">
+              {emergencyAlerts.map((alert) => (
+                <div key={alert.id} className="border-l-4 border-red-500 bg-red-50 p-4 rounded">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      {alert.title && (
+                        <h4 className="font-semibold text-red-800 mb-1">{alert.title}</h4>
+                      )}
+                      <p className="text-red-700 mb-2">{alert.content}</p>
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span>Emergency Alert</span>
+                        <span>•</span>
+                        <span>{new Date(alert.created_at).toLocaleString()}</span>
+                      </div>
                     </div>
                   </div>
-                  <p className="text-sm text-red-700">{alert.content}</p>
-                  <div className="text-xs text-muted-foreground">
-                    Sent by: {alert.profiles?.full_name || 'Unknown'}
-                  </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4">No emergency alerts sent</p>
+          )}
         </CardContent>
       </Card>
     </div>
