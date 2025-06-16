@@ -23,10 +23,8 @@ interface Broadcast {
   created_at: string;
   is_emergency: boolean;
   sender_id: string;
-  sender?: {
-    full_name: string | null;
-    role: string | null;
-  } | null;
+  sender_name?: string;
+  sender_role?: string;
 }
 
 const BroadcastCenter = () => {
@@ -55,19 +53,7 @@ const BroadcastCenter = () => {
           content: broadcastData.content,
           is_emergency: broadcastData.broadcast_type === 'emergency_alert'
         })
-        .select(`
-          id,
-          title,
-          content,
-          broadcast_type,
-          created_at,
-          is_emergency,
-          sender_id,
-          sender:profiles!sender_id(
-            full_name,
-            role
-          )
-        `)
+        .select('id')
         .single();
 
       if (error) throw error;
@@ -123,7 +109,8 @@ const BroadcastCenter = () => {
   const { data: broadcasts = [], isLoading } = useQuery({
     queryKey: ['broadcasts'],
     queryFn: async (): Promise<Broadcast[]> => {
-      const { data, error } = await supabase
+      // First get the messages
+      const { data: messages, error: messagesError } = await supabase
         .from('realtime_messages')
         .select(`
           id,
@@ -132,18 +119,31 @@ const BroadcastCenter = () => {
           broadcast_type,
           created_at,
           is_emergency,
-          sender_id,
-          sender:profiles!sender_id(
-            full_name,
-            role
-          )
+          sender_id
         `)
         .eq('message_type', 'broadcast')
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
-      return data || [];
+      if (messagesError) throw messagesError;
+      if (!messages) return [];
+
+      // Get sender profiles separately
+      const senderIds = [...new Set(messages.map(m => m.sender_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .in('id', senderIds);
+
+      // Combine the data
+      return messages.map(message => {
+        const sender = profiles?.find(p => p.id === message.sender_id);
+        return {
+          ...message,
+          sender_name: sender?.full_name || null,
+          sender_role: sender?.role || null
+        };
+      });
     },
   });
 
@@ -201,7 +201,7 @@ const BroadcastCenter = () => {
   };
 
   const getSenderName = (broadcast: Broadcast) => {
-    return broadcast.sender?.full_name || `User ${broadcast.sender_id.substring(0, 8)}`;
+    return broadcast.sender_name || `User ${broadcast.sender_id.substring(0, 8)}`;
   };
 
   return (

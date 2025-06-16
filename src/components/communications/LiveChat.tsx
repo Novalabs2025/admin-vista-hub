@@ -17,10 +17,8 @@ interface Message {
   content: string;
   created_at: string;
   sender_id: string;
-  sender?: {
-    full_name: string | null;
-    role: string | null;
-  } | null;
+  sender_name?: string;
+  sender_role?: string;
 }
 
 interface OnlineUser {
@@ -42,24 +40,38 @@ const LiveChat = () => {
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['chat-messages'],
     queryFn: async (): Promise<Message[]> => {
-      const { data, error } = await supabase
+      // First get the messages
+      const { data: messageData, error: messagesError } = await supabase
         .from('realtime_messages')
         .select(`
           id,
           content,
           created_at,
-          sender_id,
-          sender:profiles!sender_id(
-            full_name,
-            role
-          )
+          sender_id
         `)
         .eq('message_type', 'chat')
         .order('created_at', { ascending: true })
         .limit(100);
 
-      if (error) throw error;
-      return data || [];
+      if (messagesError) throw messagesError;
+      if (!messageData) return [];
+
+      // Get sender profiles separately
+      const senderIds = [...new Set(messageData.map(m => m.sender_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .in('id', senderIds);
+
+      // Combine the data
+      return messageData.map(message => {
+        const sender = profiles?.find(p => p.id === message.sender_id);
+        return {
+          ...message,
+          sender_name: sender?.full_name || null,
+          sender_role: sender?.role || null
+        };
+      });
     },
     refetchInterval: 30000, // Refetch every 30 seconds as fallback
   });
@@ -73,16 +85,7 @@ const LiveChat = () => {
           content,
           message_type: 'chat'
         })
-        .select(`
-          id,
-          content,
-          created_at,
-          sender_id,
-          sender:profiles!sender_id(
-            full_name,
-            role
-          )
-        `)
+        .select('id')
         .single();
 
       if (error) throw error;
@@ -193,14 +196,14 @@ const LiveChat = () => {
   };
 
   const getUserDisplayName = (message: Message) => {
-    if (message.sender?.full_name) {
-      return message.sender.full_name;
+    if (message.sender_name) {
+      return message.sender_name;
     }
     return `User ${message.sender_id.substring(0, 8)}`;
   };
 
   const getUserRole = (message: Message) => {
-    return message.sender?.role || 'admin';
+    return message.sender_role || 'admin';
   };
 
   const getUserInitials = (message: Message) => {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,10 +16,8 @@ interface Announcement {
   created_at: string;
   is_emergency: boolean;
   sender_id: string;
-  sender?: {
-    full_name: string | null;
-    role: string | null;
-  } | null;
+  sender_name?: string;
+  sender_role?: string;
 }
 
 const SystemAnnouncements = () => {
@@ -29,7 +28,8 @@ const SystemAnnouncements = () => {
   const { data: announcements = [], isLoading } = useQuery({
     queryKey: ['system-announcements'],
     queryFn: async (): Promise<Announcement[]> => {
-      const { data, error } = await supabase
+      // First get the messages
+      const { data: messages, error: messagesError } = await supabase
         .from('realtime_messages')
         .select(`
           id,
@@ -38,18 +38,31 @@ const SystemAnnouncements = () => {
           broadcast_type,
           created_at,
           is_emergency,
-          sender_id,
-          sender:profiles!sender_id(
-            full_name,
-            role
-          )
+          sender_id
         `)
         .in('broadcast_type', ['system_announcement', 'emergency_alert', 'general_broadcast'])
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
-      return data || [];
+      if (messagesError) throw messagesError;
+      if (!messages) return [];
+
+      // Get sender profiles separately
+      const senderIds = [...new Set(messages.map(m => m.sender_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .in('id', senderIds);
+
+      // Combine the data
+      return messages.map(message => {
+        const sender = profiles?.find(p => p.id === message.sender_id);
+        return {
+          ...message,
+          sender_name: sender?.full_name || null,
+          sender_role: sender?.role || null
+        };
+      });
     },
   });
 
@@ -98,11 +111,11 @@ const SystemAnnouncements = () => {
   };
 
   const getSenderName = (announcement: Announcement) => {
-    return announcement.sender?.full_name || `User ${announcement.sender_id.substring(0, 8)}`;
+    return announcement.sender_name || `User ${announcement.sender_id.substring(0, 8)}`;
   };
 
   const getSenderRole = (announcement: Announcement) => {
-    return announcement.sender?.role || 'admin';
+    return announcement.sender_role || 'admin';
   };
 
   const formatDate = (timestamp: string) => {

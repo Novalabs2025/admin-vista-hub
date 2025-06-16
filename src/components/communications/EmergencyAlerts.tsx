@@ -19,10 +19,8 @@ interface EmergencyAlert {
   created_at: string;
   is_emergency: boolean;
   sender_id: string;
-  sender?: {
-    full_name: string | null;
-    role: string | null;
-  } | null;
+  sender_name?: string;
+  sender_role?: string;
 }
 
 const EmergencyAlerts = () => {
@@ -49,18 +47,7 @@ const EmergencyAlerts = () => {
           content: alertData.content,
           is_emergency: true
         })
-        .select(`
-          id,
-          title,
-          content,
-          created_at,
-          is_emergency,
-          sender_id,
-          sender:profiles!sender_id(
-            full_name,
-            role
-          )
-        `)
+        .select('id')
         .single();
 
       if (error) throw error;
@@ -115,7 +102,8 @@ const EmergencyAlerts = () => {
   const { data: emergencyAlerts = [], isLoading } = useQuery({
     queryKey: ['emergency-alerts'],
     queryFn: async (): Promise<EmergencyAlert[]> => {
-      const { data, error } = await supabase
+      // First get the messages
+      const { data: messages, error: messagesError } = await supabase
         .from('realtime_messages')
         .select(`
           id,
@@ -123,19 +111,32 @@ const EmergencyAlerts = () => {
           content,
           created_at,
           is_emergency,
-          sender_id,
-          sender:profiles!sender_id(
-            full_name,
-            role
-          )
+          sender_id
         `)
         .eq('message_type', 'emergency')
         .eq('is_emergency', true)
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
-      return data || [];
+      if (messagesError) throw messagesError;
+      if (!messages) return [];
+
+      // Get sender profiles separately
+      const senderIds = [...new Set(messages.map(m => m.sender_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .in('id', senderIds);
+
+      // Combine the data
+      return messages.map(message => {
+        const sender = profiles?.find(p => p.id === message.sender_id);
+        return {
+          ...message,
+          sender_name: sender?.full_name || null,
+          sender_role: sender?.role || null
+        };
+      });
     },
   });
 
@@ -156,7 +157,7 @@ const EmergencyAlerts = () => {
   };
 
   const getSenderName = (alert: EmergencyAlert) => {
-    return alert.sender?.full_name || `User ${alert.sender_id.substring(0, 8)}`;
+    return alert.sender_name || `User ${alert.sender_id.substring(0, 8)}`;
   };
 
   const formatDateTime = (timestamp: string) => {
