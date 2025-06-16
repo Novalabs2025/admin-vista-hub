@@ -770,23 +770,35 @@ export type Database = {
         Row: {
           agent_id: string
           created_at: string
+          file_size: number | null
+          hash_algorithm: string | null
           id: string
           image_hash: string
+          image_url: string | null
           property_id: string
+          similarity_score: number | null
         }
         Insert: {
           agent_id: string
           created_at?: string
+          file_size?: number | null
+          hash_algorithm?: string | null
           id?: string
           image_hash: string
+          image_url?: string | null
           property_id: string
+          similarity_score?: number | null
         }
         Update: {
           agent_id?: string
           created_at?: string
+          file_size?: number | null
+          hash_algorithm?: string | null
           id?: string
           image_hash?: string
+          image_url?: string | null
           property_id?: string
+          similarity_score?: number | null
         }
         Relationships: [
           {
@@ -1003,6 +1015,20 @@ export type Database = {
       aggregate_daily_analytics: {
         Args: { target_date?: string }
         Returns: undefined
+      }
+      detect_image_duplicates: {
+        Args: {
+          p_image_hash: string
+          p_agent_id: string
+          p_similarity_threshold?: number
+        }
+        Returns: {
+          property_id: string
+          agent_id: string
+          image_hash: string
+          similarity_score: number
+          created_at: string
+        }[]
       }
       get_unread_message_count: {
         Args: Record<PropertyKey, never>

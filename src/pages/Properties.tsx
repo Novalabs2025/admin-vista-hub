@@ -1,4 +1,3 @@
-
 import Header from "@/components/dashboard/Header";
 import PropertiesTable from "@/components/properties/PropertiesTable";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Plus, Home, DollarSign, MapPin, Eye } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useAgentNames } from "@/hooks/useAgentNames";
 
 const fetchProperties = async () => {
   const { data, error } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
@@ -28,6 +28,8 @@ const Properties = () => {
     queryKey: ["properties"],
     queryFn: fetchProperties,
   });
+
+  const { data: agentNames } = useAgentNames();
 
   const filteredAndSortedProperties = useMemo(() => {
     if (!properties) return [];
@@ -66,17 +68,40 @@ const Properties = () => {
   }, [properties, searchTerm, statusFilter, typeFilter, sortBy]);
 
   const stats = useMemo(() => {
-    if (!properties) return { total: 0, approved: 0, pending: 0, rejected: 0, totalValue: 0, avgPrice: 0 };
+    if (!properties) return { 
+      total: 0, approved: 0, pending: 0, rejected: 0, rented: 0, sold: 0, leased: 0,
+      totalValue: 0, avgPrice: 0, topAgents: []
+    };
     
     const total = properties.length;
     const approved = properties.filter(p => p.status === "approved").length;
     const pending = properties.filter(p => p.status === "pending").length;
     const rejected = properties.filter(p => p.status === "rejected").length;
+    const rented = properties.filter(p => p.status === "rented").length;
+    const sold = properties.filter(p => p.status === "sold").length;
+    const leased = properties.filter(p => p.status === "leased").length;
     const totalValue = properties.reduce((sum, p) => sum + Number(p.price), 0);
     const avgPrice = total > 0 ? totalValue / total : 0;
 
-    return { total, approved, pending, rejected, totalValue, avgPrice };
-  }, [properties]);
+    // Calculate top agents by property count
+    const agentCounts: Record<string, number> = {};
+    properties.forEach(p => {
+      if (p.agent_id) {
+        agentCounts[p.agent_id] = (agentCounts[p.agent_id] || 0) + 1;
+      }
+    });
+
+    const topAgents = Object.entries(agentCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3)
+      .map(([agentId, count]) => ({
+        id: agentId,
+        name: agentNames?.[agentId] || `Agent ${agentId.slice(0, 8)}`,
+        count
+      }));
+
+    return { total, approved, pending, rejected, rented, sold, leased, totalValue, avgPrice, topAgents };
+  }, [properties, agentNames]);
 
   return (
     <div className="flex flex-col flex-1 h-full">
@@ -96,7 +121,7 @@ const Properties = () => {
           </Button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Enhanced Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -105,9 +130,10 @@ const Properties = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.approved} approved, {stats.pending} pending
-              </p>
+              <div className="flex gap-1 mt-1">
+                <Badge variant="secondary" className="text-xs">{stats.approved} active</Badge>
+                <Badge variant="outline" className="text-xs">{stats.rented + stats.sold + stats.leased} sold/rented</Badge>
+              </div>
             </CardContent>
           </Card>
 
@@ -126,36 +152,47 @@ const Properties = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Approval Rate</CardTitle>
+              <CardTitle className="text-sm font-medium">Status Overview</CardTitle>
               <Badge variant="secondary" className="text-xs">
-                {stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0}%
+                {stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0}% active
               </Badge>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.rejected} rejected
-              </p>
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>Pending:</span>
+                  <span className="font-medium">{stats.pending}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Sold/Rented:</span>
+                  <span className="font-medium">{stats.sold + stats.rented + stats.leased}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+              <CardTitle className="text-sm font-medium">Top Agents</CardTitle>
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {properties?.reduce((sum, p) => sum + p.views, 0) || 0}
+              <div className="space-y-1">
+                {stats.topAgents.slice(0, 2).map((agent, index) => (
+                  <div key={agent.id} className="flex justify-between text-sm">
+                    <span className="truncate">{agent.name}</span>
+                    <span className="font-medium">{agent.count}</span>
+                  </div>
+                ))}
+                {stats.topAgents.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No agents yet</p>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Across all properties
-              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters and Search */}
+        {/* Enhanced Filters and Search */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -184,6 +221,9 @@ const Properties = () => {
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="rented">Rented</SelectItem>
+                  <SelectItem value="sold">Sold</SelectItem>
+                  <SelectItem value="leased">Leased</SelectItem>
                 </SelectContent>
               </Select>
 
