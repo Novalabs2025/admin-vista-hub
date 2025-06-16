@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { Mail } from 'lucide-react';
 
 const invitationSchema = z.object({
@@ -35,6 +36,7 @@ interface AdminInvitationModalProps {
 
 export default function AdminInvitationModal({ isOpen, onClose }: AdminInvitationModalProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const form = useForm<InvitationFormData>({
@@ -47,23 +49,45 @@ export default function AdminInvitationModal({ isOpen, onClose }: AdminInvitatio
 
   const createInvitationMutation = useMutation({
     mutationFn: async (data: InvitationFormData) => {
+      // Create the invitation record
       const { data: result, error } = await supabase
         .from('admin_invitations')
         .insert({
           email: data.email,
           role: data.role,
-          invited_by: (await supabase.auth.getUser()).data.user?.id!,
+          invited_by: user?.id!,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // Send the invitation email
+      const emailResponse = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email: data.email,
+          role: data.role,
+          invitationToken: result.invitation_token,
+          inviterName: user?.user_metadata?.full_name || user?.email,
+        },
+      });
+
+      if (emailResponse.error) {
+        console.error('Email sending error:', emailResponse.error);
+        // Don't throw here - invitation is created, just email failed
+        toast({
+          title: 'Invitation created',
+          description: 'Invitation created but email failed to send. You can copy the link manually.',
+          variant: 'destructive',
+        });
+      }
+
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast({
-        title: 'Invitation sent',
-        description: 'Admin invitation has been created successfully.',
+        title: 'Invitation sent successfully',
+        description: 'Admin invitation has been created and email sent.',
       });
       queryClient.invalidateQueries({ queryKey: ['admin-invitations'] });
       form.reset();
@@ -91,7 +115,7 @@ export default function AdminInvitationModal({ isOpen, onClose }: AdminInvitatio
             Invite New Admin
           </DialogTitle>
           <DialogDescription>
-            Send an invitation to create a new admin account. The invitation will expire in 7 days.
+            Send an invitation email to create a new admin account. The invitation will expire in 7 days.
           </DialogDescription>
         </DialogHeader>
 
@@ -145,7 +169,7 @@ export default function AdminInvitationModal({ isOpen, onClose }: AdminInvitatio
                 type="submit"
                 disabled={createInvitationMutation.isPending}
               >
-                {createInvitationMutation.isPending ? 'Sending...' : 'Send Invitation'}
+                {createInvitationMutation.isPending ? 'Sending Invitation...' : 'Send Invitation'}
               </Button>
             </div>
           </form>
