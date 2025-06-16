@@ -11,7 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
-import { View, MoreHorizontal, Check, X, Eye, Calendar, MapPin, TrendingUp } from "lucide-react";
+import { View, MoreHorizontal, Check, X, Eye, Calendar, MapPin, TrendingUp, RotateCcw } from "lucide-react";
 import PropertyDetailsModal from "./PropertyDetailsModal";
 import {
   DropdownMenu,
@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type Property = Tables<'properties'>;
 
@@ -44,7 +45,9 @@ interface PropertiesTableProps {
 const PropertiesTable = ({ properties }: PropertiesTableProps) => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [rejectionProperty, setRejectionProperty] = useState<Property | null>(null);
+  const [reactivateProperty, setReactivateProperty] = useState<Property | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [reactivationReason, setReactivationReason] = useState("");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -53,14 +56,20 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
       propertyId,
       status,
       rejection_reason,
+      status_change_reason,
     }: {
       propertyId: string;
-      status: "approved" | "rejected";
+      status: "approved" | "rejected" | "rented" | "sold" | "leased";
       rejection_reason?: string;
+      status_change_reason?: string;
     }) => {
       const { error } = await supabase
         .from("properties")
-        .update({ status, rejection_reason: rejection_reason || null })
+        .update({ 
+          status, 
+          rejection_reason: rejection_reason || null,
+          status_change_reason: status_change_reason || null
+        })
         .eq("id", propertyId);
       if (error) throw error;
     },
@@ -71,7 +80,9 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
         description: "The property status has been updated.",
       });
       setRejectionProperty(null);
+      setReactivateProperty(null);
       setRejectionReason("");
+      setReactivationReason("");
     },
     onError: (error) => {
       toast({
@@ -83,7 +94,11 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
   });
 
   const handleApprove = (propertyId: string) => {
-    updatePropertyStatusMutation.mutate({ propertyId, status: "approved" });
+    updatePropertyStatusMutation.mutate({ 
+      propertyId, 
+      status: "approved",
+      status_change_reason: "Property approved by admin"
+    });
   };
 
   const handleConfirmReject = () => {
@@ -92,6 +107,16 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
       propertyId: rejectionProperty.id,
       status: "rejected",
       rejection_reason: rejectionReason,
+      status_change_reason: `Property rejected: ${rejectionReason}`
+    });
+  };
+
+  const handleConfirmReactivate = () => {
+    if (!reactivateProperty) return;
+    updatePropertyStatusMutation.mutate({
+      propertyId: reactivateProperty.id,
+      status: "approved",
+      status_change_reason: `Property reactivated by admin: ${reactivationReason}`
     });
   };
 
@@ -99,7 +124,10 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
     const variants = {
       approved: "bg-green-100 text-green-800 border-green-200",
       pending: "bg-yellow-100 text-yellow-800 border-yellow-200", 
-      rejected: "bg-red-100 text-red-800 border-red-200"
+      rejected: "bg-red-100 text-red-800 border-red-200",
+      rented: "bg-blue-100 text-blue-800 border-blue-200",
+      sold: "bg-purple-100 text-purple-800 border-purple-200",
+      leased: "bg-orange-100 text-orange-800 border-orange-200"
     };
 
     return (
@@ -118,6 +146,10 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  const canReactivate = (status: string) => {
+    return ['rented', 'sold', 'leased'].includes(status);
   };
 
   return (
@@ -251,6 +283,15 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
                                 </DropdownMenuItem>
                               </>
                             )}
+                            {canReactivate(property.status) && (
+                              <DropdownMenuItem 
+                                onClick={() => setReactivateProperty(property)}
+                                className="text-blue-600 focus:text-blue-600"
+                              >
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                <span>Make Available</span>
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -300,6 +341,43 @@ const PropertiesTable = ({ properties }: PropertiesTableProps) => {
               className="bg-red-600 hover:bg-red-700"
             >
               Confirm Rejection
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!reactivateProperty} onOpenChange={() => setReactivateProperty(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Make Property Available Again</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will change the property status from "{reactivateProperty?.status}" back to "approved", 
+              making it available for viewing and inquiries again. Please provide a reason for this change.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Reason for Reactivation</label>
+            <Textarea
+              placeholder="e.g., Agent requested reactivation due to cancelled transaction, property back on market..."
+              value={reactivationReason}
+              onChange={(e) => setReactivationReason(e.target.value)}
+              className="w-full"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setReactivateProperty(null);
+              setReactivationReason("");
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmReactivate} 
+              disabled={!reactivationReason.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Make Available
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

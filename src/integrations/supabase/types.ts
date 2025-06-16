@@ -669,6 +669,8 @@ export type Database = {
           rejection_reason: string | null
           state: string
           status: Database["public"]["Enums"]["property_status"]
+          status_change_reason: string | null
+          status_history: Json | null
           updated_at: string
           views: number
           zip_code: string | null
@@ -691,6 +693,8 @@ export type Database = {
           rejection_reason?: string | null
           state: string
           status?: Database["public"]["Enums"]["property_status"]
+          status_change_reason?: string | null
+          status_history?: Json | null
           updated_at?: string
           views?: number
           zip_code?: string | null
@@ -713,6 +717,8 @@ export type Database = {
           rejection_reason?: string | null
           state?: string
           status?: Database["public"]["Enums"]["property_status"]
+          status_change_reason?: string | null
+          status_history?: Json | null
           updated_at?: string
           views?: number
           zip_code?: string | null
@@ -1037,7 +1043,13 @@ export type Database = {
         | "property_submitted"
         | "payment_success"
       payment_status: "Paid" | "Pending" | "Failed"
-      property_status: "pending" | "approved" | "rejected"
+      property_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "rented"
+        | "sold"
+        | "leased"
       subscription_plan: "free" | "premium"
       subscription_status:
         | "active"
@@ -1180,7 +1192,14 @@ export const Constants = {
         "payment_success",
       ],
       payment_status: ["Paid", "Pending", "Failed"],
-      property_status: ["pending", "approved", "rejected"],
+      property_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "rented",
+        "sold",
+        "leased",
+      ],
       subscription_plan: ["free", "premium"],
       subscription_status: [
         "active",

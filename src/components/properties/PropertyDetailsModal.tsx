@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tables } from "@/integrations/supabase/types";
-import { DollarSign, Home, Bed, Bath, Square, ShieldCheck, ShieldX, Hourglass } from "lucide-react";
+import { DollarSign, Home, Bed, Bath, Square, ShieldCheck, ShieldX, Hourglass, Clock } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 type Property = Tables<'properties'>;
 
@@ -22,6 +23,7 @@ const PropertyDetailsModal = ({ property, isOpen, onClose }: PropertyDetailsModa
   if (!property) return null;
 
   const images = Array.isArray(property.image_urls) ? property.image_urls : [];
+  const statusHistory = Array.isArray(property.status_history) ? property.status_history : [];
 
   const getStatusIcon = () => {
     switch (property.status) {
@@ -31,14 +33,30 @@ const PropertyDetailsModal = ({ property, isOpen, onClose }: PropertyDetailsModa
         return <ShieldX className="h-4 w-4 text-red-500" />;
       case 'pending':
         return <Hourglass className="h-4 w-4 text-yellow-500" />;
+      case 'rented':
+        return <Home className="h-4 w-4 text-blue-500" />;
+      case 'sold':
+        return <Home className="h-4 w-4 text-purple-500" />;
+      case 'leased':
+        return <Home className="h-4 w-4 text-orange-500" />;
       default:
         return null;
     }
   };
 
+  const formatStatusHistoryDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{property.address}</DialogTitle>
           <DialogDescription>
@@ -62,6 +80,12 @@ const PropertyDetailsModal = ({ property, isOpen, onClose }: PropertyDetailsModa
                             ? "bg-green-100 text-green-800"
                             : property.status === "pending"
                             ? "bg-yellow-100 text-yellow-800"
+                            : property.status === "rented"
+                            ? "bg-blue-100 text-blue-800"
+                            : property.status === "sold"
+                            ? "bg-purple-100 text-purple-800"
+                            : property.status === "leased"
+                            ? "bg-orange-100 text-orange-800"
                             : "bg-red-100 text-red-800"
                         }
                 >
@@ -98,7 +122,7 @@ const PropertyDetailsModal = ({ property, isOpen, onClose }: PropertyDetailsModa
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
               <span>
-                <span className="font-semibold">Price:</span> ${property.price.toLocaleString()}
+                <span className="font-semibold">Price:</span> ₦{property.price.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -137,6 +161,39 @@ const PropertyDetailsModal = ({ property, isOpen, onClose }: PropertyDetailsModa
               <h3 className="font-semibold mb-2">Description</h3>
               <p className="text-muted-foreground">{property.description}</p>
             </div>
+          )}
+
+          {statusHistory.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Status History
+                </h3>
+                <div className="space-y-3">
+                  {statusHistory.map((entry: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="text-sm">
+                          <span className="font-medium capitalize">{entry.from_status}</span>
+                          <span className="mx-2">→</span>
+                          <span className="font-medium capitalize">{entry.to_status}</span>
+                        </div>
+                        {entry.reason && (
+                          <div className="text-xs text-muted-foreground">
+                            {entry.reason}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatStatusHistoryDate(entry.changed_at)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
       </DialogContent>
