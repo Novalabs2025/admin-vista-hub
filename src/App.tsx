@@ -39,7 +39,7 @@ const App = () => (
             <Route path="/notifications" element={<ProtectedRoute><DashboardLayout><Notifications /></DashboardLayout></ProtectedRoute>} />
             <Route path="/communications" element={<ProtectedRoute><DashboardLayout><Communications /></DashboardLayout></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><DashboardLayout><Payments /></DashboardLayout></ProtectedRoute>} />
-            <Route path="/settings" element={<RoleProtectedRoute allowedRoles={['admin']}><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/settings" element={<RoleProtectedRoute allowedRoles={['admin']}><DashboardLayout><Settings /></DashboardLayout></RoleProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><DashboardLayout><NotFound /></DashboardLayout></ProtectedRoute>} />
           </Routes>
