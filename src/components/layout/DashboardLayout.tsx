@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { useSystemNotifications } from '@/hooks/useSystemNotifications';
+import { Toaster } from '@/components/ui/toaster';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -20,6 +21,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {children}
         </main>
       </div>
+      <Toaster />
     </SidebarProvider>
   );
 }

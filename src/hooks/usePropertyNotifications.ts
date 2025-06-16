@@ -24,7 +24,7 @@ export const usePropertyNotifications = () => {
           const { error } = await supabase
             .from('notifications')
             .insert({
-              type: 'system_update', // Using valid enum value
+              type: 'system_update',
               title: 'New Property Submission',
               description: `A new ${newProperty.property_type} property has been submitted for approval at ${newProperty.address}`,
               user_id: null // System-wide notification for admins
@@ -34,6 +34,8 @@ export const usePropertyNotifications = () => {
             console.error('Error creating property notification:', error);
           } else {
             console.log('Property notification created successfully');
+            
+            // Show immediate toast for admins
             toast({
               title: "New Property Submission",
               description: `A new ${newProperty.property_type} property has been submitted`,
@@ -83,6 +85,13 @@ export const usePropertyNotifications = () => {
                 console.error('Error creating property status notification:', error);
               } else {
                 console.log('Property status notification created successfully');
+                
+                // Show toast for property status changes
+                toast({
+                  title,
+                  description,
+                  variant: updatedProperty.status === 'approved' ? 'default' : 'destructive'
+                });
               }
             } catch (err) {
               console.error('Failed to create property status notification:', err);
@@ -94,7 +103,7 @@ export const usePropertyNotifications = () => {
       };
 
       // Create a unique channel name
-      const channelName = `property-notifications-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const channelName = `property-notifications-${Date.now()}`;
       
       channel = supabase
         .channel(channelName)

@@ -9,81 +9,84 @@ export const useRealtimeCommunications = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up real-time subscription for all communication events
-    const channel = supabase
-      .channel('communications-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'realtime_messages'
-        },
-        (payload) => {
-          console.log('New message received:', payload);
+    let messageChannel: any = null;
+
+    const setupRealtimeSubscriptions = async () => {
+      console.log('Setting up realtime communications...');
+
+      // Handle new messages
+      const handleNewMessage = (payload: any) => {
+        console.log('New realtime message:', payload);
+        const newMessage = payload.new;
+        
+        // Invalidate relevant queries based on message type
+        if (newMessage.message_type === 'chat') {
+          queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+          queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+        } else if (newMessage.message_type === 'broadcast') {
+          queryClient.invalidateQueries({ queryKey: ['broadcasts'] });
+        } else if (newMessage.message_type === 'emergency') {
+          queryClient.invalidateQueries({ queryKey: ['emergency-alerts'] });
           
-          const newMessage = payload.new;
-          
-          // Invalidate relevant queries based on message type
-          if (newMessage.message_type === 'chat') {
-            queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-          } else if (newMessage.message_type === 'broadcast') {
-            queryClient.invalidateQueries({ queryKey: ['broadcasts'] });
-            queryClient.invalidateQueries({ queryKey: ['system-announcements'] });
-          } else if (newMessage.message_type === 'emergency') {
-            queryClient.invalidateQueries({ queryKey: ['emergency-alerts'] });
-            queryClient.invalidateQueries({ queryKey: ['system-announcements'] });
-            
-            // Show urgent notification for emergency alerts
-            if (newMessage.is_emergency) {
-              toast({
-                title: "🚨 Emergency Alert",
-                description: newMessage.title || "New emergency alert received",
-                variant: "destructive",
-                duration: 10000, // Show for 10 seconds
-              });
-            }
+          // Show urgent toast for emergency messages
+          if (newMessage.is_emergency) {
+            toast({
+              title: "Emergency Alert",
+              description: newMessage.title || newMessage.content,
+              variant: "destructive",
+            });
           }
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'realtime_messages'
-        },
-        (payload) => {
-          console.log('Message updated:', payload);
-          // Invalidate all communication queries to reflect updates
-          queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-          queryClient.invalidateQueries({ queryKey: ['broadcasts'] });
-          queryClient.invalidateQueries({ queryKey: ['emergency-alerts'] });
+        
+        // Update system announcements if it's a broadcast type
+        if (newMessage.broadcast_type) {
           queryClient.invalidateQueries({ queryKey: ['system-announcements'] });
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'realtime_messages'
-        },
-        (payload) => {
-          console.log('Message deleted:', payload);
-          // Invalidate all communication queries to reflect deletions
-          queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-          queryClient.invalidateQueries({ queryKey: ['broadcasts'] });
-          queryClient.invalidateQueries({ queryKey: ['emergency-alerts'] });
-          queryClient.invalidateQueries({ queryKey: ['system-announcements'] });
-        }
-      )
-      .subscribe();
+      };
+
+      // Create channel for realtime messages
+      const channelName = `realtime-communications-${Date.now()}`;
+      
+      messageChannel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'realtime_messages',
+          },
+          handleNewMessage
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'realtime_messages',
+          },
+          () => {
+            // Invalidate all message queries on updates
+            queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+            queryClient.invalidateQueries({ queryKey: ['broadcasts'] });
+            queryClient.invalidateQueries({ queryKey: ['emergency-alerts'] });
+            queryClient.invalidateQueries({ queryKey: ['system-announcements'] });
+            queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+          }
+        );
+
+      const subscription = await messageChannel.subscribe();
+      console.log('Realtime communications subscription status:', subscription);
+    };
+
+    setupRealtimeSubscriptions();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (messageChannel) {
+        console.log('Cleaning up realtime communications subscription');
+        supabase.removeChannel(messageChannel);
+        messageChannel = null;
+      }
     };
   }, [queryClient, toast]);
-
-  return null; // This is a utility hook that doesn't return JSX
 };

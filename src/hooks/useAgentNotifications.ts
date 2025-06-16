@@ -34,6 +34,8 @@ export const useAgentNotifications = () => {
             console.error('Error creating notification:', error);
           } else {
             console.log('Notification created successfully for new agent verification');
+            
+            // Show immediate toast
             toast({
               title: "New Agent Verification",
               description: "A new agent has submitted verification documents",
@@ -62,7 +64,7 @@ export const useAgentNotifications = () => {
               .insert({
                 type: 'agent_rejected',
                 title: 'Agent Verification Rejected',
-                description: `An agent verification has been rejected.`,
+                description: `Your agent verification has been rejected. Please review and resubmit.`,
                 user_id: updatedVerification.user_id // Notify the specific agent
               });
 
@@ -82,7 +84,7 @@ export const useAgentNotifications = () => {
       };
 
       // Create a unique channel name
-      const channelName = `agent-notifications-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const channelName = `agent-notifications-${Date.now()}`;
       
       channel = supabase
         .channel(channelName)

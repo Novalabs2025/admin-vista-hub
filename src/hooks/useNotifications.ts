@@ -33,10 +33,15 @@ export const useNotifications = () => {
     const setupChannel = async () => {
       const handleNewNotification = (payload: any) => {
         console.log('New notification received!', payload);
+        const newNotification = payload.new as Notification;
+        
+        // Show toast notification
         toast({
-          title: "New Notification",
-          description: (payload.new as Notification).title,
+          title: newNotification.title,
+          description: newNotification.description,
         });
+        
+        // Invalidate queries to refresh the UI
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
       };
       
@@ -45,7 +50,7 @@ export const useNotifications = () => {
       };
 
       // Create a unique channel name to avoid conflicts
-      const channelName = `notifications-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const channelName = `notifications-main-${Date.now()}`;
       
       channel = supabase
         .channel(channelName)
@@ -70,19 +75,19 @@ export const useNotifications = () => {
 
       // Subscribe to the channel
       const subscription = await channel.subscribe();
-      console.log('Notification channel subscription status:', subscription);
+      console.log('Main notification channel subscription status:', subscription);
     };
 
     setupChannel();
 
     return () => {
       if (channel) {
-        console.log('Cleaning up notification channel subscription');
+        console.log('Cleaning up main notification channel subscription');
         supabase.removeChannel(channel);
         channel = null;
       }
     };
-  }, []); // Empty dependency array to run only once
+  }, [queryClient, toast]);
 
   const unreadCount = notifications?.filter(n => !n.read).length || 0;
 
