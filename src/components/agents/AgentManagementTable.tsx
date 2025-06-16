@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,10 +52,18 @@ const AgentManagementTable = () => {
       queryFn: async (): Promise<FetchedAgent[]> => {
         console.log('Fetching agents data...');
         
-        // Fetch agent verifications
+        // Fetch agent verifications with proper joins
         const { data: verifications, error: verificationsError } = await supabase
           .from('agent_verifications')
-          .select('*');
+          .select(`
+            *,
+            profiles:user_id (
+              full_name,
+              phone_number,
+              location,
+              location_focus
+            )
+          `);
 
         if (verificationsError) {
           console.error('Error fetching verifications:', verificationsError);
@@ -69,23 +76,6 @@ const AgentManagementTable = () => {
         // Get user IDs from verifications
         const userIds = verifications.map(v => v.user_id);
         if (userIds.length === 0) return [];
-
-        // Fetch profiles separately
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', userIds);
-
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-          throw new Error(profilesError.message);
-        }
-
-        // Create a map of profiles by user ID for easy lookup
-        const profilesMap = new Map();
-        profiles?.forEach(profile => {
-          profilesMap.set(profile.id, profile);
-        });
 
         // Fetch additional data for each agent
         const [propertiesResponse, leadsResponse, paymentsResponse] = await Promise.all([
@@ -131,7 +121,7 @@ const AgentManagementTable = () => {
         } as const;
 
         return verifications.map(verification => {
-          const profile = profilesMap.get(verification.user_id);
+          const profile = verification.profiles as any;
           const statusKey = verification.status as keyof typeof statusMap;
 
           // Ensure all numeric values are properly defined
@@ -141,12 +131,12 @@ const AgentManagementTable = () => {
 
           return {
             id: verification.user_id,
-            businessName: profile?.full_name || 'N/A',
+            businessName: verification.business_name || profile?.full_name || 'N/A',
             contactName: profile?.full_name || 'N/A',
             phone: profile?.phone_number || 'N/A',
             email: 'N/A', // Not available in current schema
-            location: profile?.location || 'N/A',
-            locationFocus: profile?.location_focus || 'N/A',
+            location: verification.location || profile?.location || 'N/A',
+            locationFocus: verification.location_focus || profile?.location_focus || 'N/A',
             status: statusMap[statusKey] || 'Pending',
             accountType: verification.account_type || 'individual',
             createdAt: verification.created_at,
