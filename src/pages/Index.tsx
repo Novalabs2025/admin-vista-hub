@@ -1,6 +1,8 @@
 
 import Header from "@/components/dashboard/Header";
-import StatCards from "@/components/dashboard/StatCards";
+import EnhancedStatCards from "@/components/dashboard/EnhancedStatCards";
+import LeadManagementCard from "@/components/dashboard/LeadManagementCard";
+import RecentLeadsCard from "@/components/dashboard/RecentLeadsCard";
 import AgentVerificationTable from "@/components/dashboard/AgentVerificationTable";
 import AnalyticsChart from "@/components/dashboard/AnalyticsChart";
 import { Button } from "@/components/ui/button";
@@ -31,7 +33,14 @@ const Index = () => {
             </div>
           </div>
         )}
-        <StatCards />
+        
+        <EnhancedStatCards />
+        
+        <div className="grid gap-6 md:grid-cols-2">
+          <LeadManagementCard />
+          <RecentLeadsCard />
+        </div>
+        
         <AnalyticsChart />
         <AgentVerificationTable />
       </main>
