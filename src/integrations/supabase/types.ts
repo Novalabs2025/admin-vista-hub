@@ -84,6 +84,72 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_seeker_interactions: {
+        Row: {
+          agent_id: string
+          appointment_id: string | null
+          attachments: Json | null
+          created_at: string
+          deal_id: string | null
+          duration_minutes: number | null
+          id: string
+          interaction_date: string
+          interaction_type: string
+          notes: string | null
+          outcome: string | null
+          seeker_contact: string | null
+          seeker_id: string | null
+          seeker_name: string
+        }
+        Insert: {
+          agent_id: string
+          appointment_id?: string | null
+          attachments?: Json | null
+          created_at?: string
+          deal_id?: string | null
+          duration_minutes?: number | null
+          id?: string
+          interaction_date?: string
+          interaction_type: string
+          notes?: string | null
+          outcome?: string | null
+          seeker_contact?: string | null
+          seeker_id?: string | null
+          seeker_name: string
+        }
+        Update: {
+          agent_id?: string
+          appointment_id?: string | null
+          attachments?: Json | null
+          created_at?: string
+          deal_id?: string | null
+          duration_minutes?: number | null
+          id?: string
+          interaction_date?: string
+          interaction_type?: string
+          notes?: string | null
+          outcome?: string | null
+          seeker_contact?: string | null
+          seeker_id?: string | null
+          seeker_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_interactions_appointment"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_interactions_deal"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_verifications: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -171,6 +237,118 @@ export type Database = {
         }
         Relationships: []
       }
+      appointments: {
+        Row: {
+          agent_id: string
+          appointment_date: string
+          appointment_type: string
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          location: string | null
+          notes: string | null
+          property_id: string | null
+          reminder_sent: boolean | null
+          reminder_sent_at: string | null
+          seeker_email: string | null
+          seeker_id: string | null
+          seeker_name: string
+          seeker_phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          appointment_date: string
+          appointment_type?: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          property_id?: string | null
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
+          seeker_email?: string | null
+          seeker_id?: string | null
+          seeker_name: string
+          seeker_phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          appointment_date?: string
+          appointment_type?: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          property_id?: string | null
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
+          seeker_email?: string | null
+          seeker_id?: string | null
+          seeker_name?: string
+          seeker_phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_appointments_property"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auto_reminders: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message_template: string
+          reminder_time: string
+          reminder_type: string
+          sent: boolean | null
+          sent_at: string | null
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_template: string
+          reminder_time: string
+          reminder_type: string
+          sent?: boolean | null
+          sent_at?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_template?: string
+          reminder_time?: string
+          reminder_type?: string
+          sent?: boolean | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_reminders_appointment"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -206,6 +384,74 @@ export type Database = {
             columns: ["participant2_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          actual_close_date: string | null
+          agent_id: string
+          commission_amount: number | null
+          created_at: string
+          deal_value: number | null
+          expected_close_date: string | null
+          id: string
+          notes: string | null
+          probability: number | null
+          property_id: string | null
+          seeker_email: string | null
+          seeker_id: string | null
+          seeker_name: string
+          seeker_phone: string | null
+          source: string | null
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          actual_close_date?: string | null
+          agent_id: string
+          commission_amount?: number | null
+          created_at?: string
+          deal_value?: number | null
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          probability?: number | null
+          property_id?: string | null
+          seeker_email?: string | null
+          seeker_id?: string | null
+          seeker_name: string
+          seeker_phone?: string | null
+          source?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_close_date?: string | null
+          agent_id?: string
+          commission_amount?: number | null
+          created_at?: string
+          deal_value?: number | null
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          probability?: number | null
+          property_id?: string | null
+          seeker_email?: string | null
+          seeker_id?: string | null
+          seeker_name?: string
+          seeker_phone?: string | null
+          source?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_deals_property"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -1037,6 +1283,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      get_unread_notification_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       has_role: {
         Args: { role_to_check: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -1051,6 +1301,10 @@ export type Database = {
       }
       mark_message_as_read: {
         Args: { message_id: string }
+        Returns: undefined
+      }
+      mark_notification_read: {
+        Args: { notification_id: string; is_read?: boolean }
         Returns: undefined
       }
     }
