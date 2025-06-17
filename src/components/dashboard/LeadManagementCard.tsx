@@ -12,18 +12,18 @@ const LeadManagementCard = () => {
   const { data: leadStats, isLoading } = useQuery({
     queryKey: ["leadManagementStats"],
     queryFn: async () => {
-      const [newLeads, contactedLeads, qualifiedLeads, convertedLeads] = await Promise.all([
+      const [newLeads, contactedLeads, qualifiedLeads, closedLeads] = await Promise.all([
         supabase.from("leads").select("*", { count: "exact", head: true }).eq("status", "new"),
         supabase.from("leads").select("*", { count: "exact", head: true }).eq("status", "contacted"),
         supabase.from("leads").select("*", { count: "exact", head: true }).eq("status", "qualified"),
-        supabase.from("leads").select("*", { count: "exact", head: true }).eq("status", "converted"),
+        supabase.from("leads").select("*", { count: "exact", head: true }).eq("status", "closed"),
       ]);
 
       return {
         newLeads: newLeads.count || 0,
         contacted: contactedLeads.count || 0,
         qualified: qualifiedLeads.count || 0,
-        converted: convertedLeads.count || 0,
+        closed: closedLeads.count || 0,
       };
     },
   });
@@ -33,9 +33,9 @@ const LeadManagementCard = () => {
   }
 
   const totalLeads = (leadStats?.newLeads || 0) + (leadStats?.contacted || 0) + 
-                    (leadStats?.qualified || 0) + (leadStats?.converted || 0);
+                    (leadStats?.qualified || 0) + (leadStats?.closed || 0);
 
-  const conversionRate = totalLeads > 0 ? ((leadStats?.converted || 0) / totalLeads * 100).toFixed(1) : 0;
+  const conversionRate = totalLeads > 0 ? ((leadStats?.closed || 0) / totalLeads * 100).toFixed(1) : 0;
 
   return (
     <Card>
@@ -63,8 +63,8 @@ const LeadManagementCard = () => {
               <Badge className="bg-blue-100 text-blue-800">{leadStats?.qualified || 0}</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Converted</span>
-              <Badge className="bg-green-100 text-green-800">{leadStats?.converted || 0}</Badge>
+              <span className="text-sm text-muted-foreground">Closed</span>
+              <Badge className="bg-green-100 text-green-800">{leadStats?.closed || 0}</Badge>
             </div>
           </div>
         </div>
