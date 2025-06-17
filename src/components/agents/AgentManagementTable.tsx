@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Users, CheckCircle, Clock, XCircle } from 'lucide-react';
-import AgentDetailsModal from './AgentDetailsModal';
+import { Search, Filter, Users, CheckCircle, Clock, XCircle, MessageSquare, Phone } from 'lucide-react';
+import EnhancedAgentDetailsModal from './EnhancedAgentDetailsModal';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,6 +38,8 @@ export type FetchedAgent = {
   propertiesCount: number;
   leadsCount: number;
   totalRevenue: number;
+  voiceMessagesCount?: number;
+  unreadVoiceMessages?: number;
 };
 
 const AgentManagementTable = () => {
@@ -81,7 +84,7 @@ const AgentManagementTable = () => {
         }
 
         // Fetch additional data for each agent
-        const [propertiesResponse, leadsResponse, paymentsResponse] = await Promise.all([
+        const [propertiesResponse, leadsResponse, paymentsResponse, voiceMessagesResponse] = await Promise.all([
           supabase
             .from('properties')
             .select('agent_id, id')
@@ -94,13 +97,19 @@ const AgentManagementTable = () => {
             .from('payments')
             .select('user_id, amount')
             .eq('status', 'Paid')
-            .in('user_id', userIds)
+            .in('user_id', userIds),
+          supabase
+            .from('whatsapp_voice_messages')
+            .select('agent_id, id, response_sent')
+            .in('agent_id', userIds)
         ]);
 
         // Process the data
         const propertiesByAgent = new Map();
         const leadsByAgent = new Map();
         const revenueByAgent = new Map();
+        const voiceMessagesByAgent = new Map();
+        const unreadVoiceByAgent = new Map();
         const profilesMap = new Map();
 
         // Create profiles map for easy lookup
@@ -123,6 +132,18 @@ const AgentManagementTable = () => {
           revenueByAgent.set(payment.user_id, total + Number(payment.amount || 0));
         });
 
+        voiceMessagesResponse.data?.forEach(message => {
+          if (message.agent_id) {
+            const count = voiceMessagesByAgent.get(message.agent_id) || 0;
+            voiceMessagesByAgent.set(message.agent_id, count + 1);
+            
+            if (!message.response_sent) {
+              const unreadCount = unreadVoiceByAgent.get(message.agent_id) || 0;
+              unreadVoiceByAgent.set(message.agent_id, unreadCount + 1);
+            }
+          }
+        });
+
         const statusMap = {
           approved: 'Approved',
           pending: 'Pending',
@@ -137,6 +158,8 @@ const AgentManagementTable = () => {
           const propertiesCount = Number(propertiesByAgent.get(verification.user_id) || 0);
           const leadsCount = Number(leadsByAgent.get(verification.user_id) || 0);
           const totalRevenue = Number(revenueByAgent.get(verification.user_id) || 0);
+          const voiceMessagesCount = Number(voiceMessagesByAgent.get(verification.user_id) || 0);
+          const unreadVoiceMessages = Number(unreadVoiceByAgent.get(verification.user_id) || 0);
 
           return {
             id: verification.user_id,
@@ -163,6 +186,8 @@ const AgentManagementTable = () => {
             propertiesCount,
             leadsCount,
             totalRevenue,
+            voiceMessagesCount,
+            unreadVoiceMessages,
           };
         });
       }
@@ -346,6 +371,7 @@ const AgentManagementTable = () => {
                                     <TableHead>Contact Info</TableHead>
                                     <TableHead>Location</TableHead>
                                     <TableHead>Performance</TableHead>
+                                    <TableHead>Communications</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -354,7 +380,7 @@ const AgentManagementTable = () => {
                                 {isLoading ? (
                                   Array.from({ length: 5 }).map((_, index) => (
                                     <TableRow key={index}>
-                                      <TableCell colSpan={6}>
+                                      <TableCell colSpan={7}>
                                         <Skeleton className="h-16 w-full" />
                                       </TableCell>
                                     </TableRow>
@@ -395,6 +421,24 @@ const AgentManagementTable = () => {
                                               </div>
                                           </TableCell>
                                           <TableCell>
+                                              <div className="flex items-center gap-2">
+                                                  {agent.voiceMessagesCount && agent.voiceMessagesCount > 0 && (
+                                                    <div className="flex items-center gap-1">
+                                                      <Phone className="h-3 w-3 text-blue-600" />
+                                                      <span className="text-xs">{agent.voiceMessagesCount}</span>
+                                                      {agent.unreadVoiceMessages && agent.unreadVoiceMessages > 0 && (
+                                                        <Badge variant="destructive" className="text-xs h-4 px-1">
+                                                          {agent.unreadVoiceMessages}
+                                                        </Badge>
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                  {(!agent.voiceMessagesCount || agent.voiceMessagesCount === 0) && (
+                                                    <span className="text-xs text-muted-foreground">No messages</span>
+                                                  )}
+                                              </div>
+                                          </TableCell>
+                                          <TableCell>
                                               <Badge 
                                                   variant={agent.status === 'Approved' ? 'default' : agent.status === 'Pending' ? 'secondary' : 'destructive'}
                                                   className={agent.status === 'Approved' ? 'bg-green-100 text-green-800 border-green-200' : agent.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'}>
@@ -421,7 +465,7 @@ const AgentManagementTable = () => {
                 </Card>
             </div>
 
-            <AgentDetailsModal 
+            <EnhancedAgentDetailsModal 
                 agent={selectedAgent}
                 isOpen={!!selectedAgent}
                 onClose={() => setSelectedAgent(null)}
