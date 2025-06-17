@@ -11,10 +11,10 @@ type Notification = Tables<'notifications'>;
 export const useNotifications = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user, userRoles } = useAuth();
+  const { user, roles } = useAuth();
 
   // Check if user is admin or super_admin
-  const isAdmin = userRoles?.includes('admin') || userRoles?.includes('super_admin');
+  const isAdmin = roles?.includes('admin') || roles?.includes('super_admin');
 
   const { data: notifications, ...queryInfo } = useQuery({
     queryKey: ['notifications'],
