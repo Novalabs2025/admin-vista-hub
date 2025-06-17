@@ -49,6 +49,8 @@ export default function AdminInvitationModal({ isOpen, onClose }: AdminInvitatio
 
   const createInvitationMutation = useMutation({
     mutationFn: async (data: InvitationFormData) => {
+      console.log('Creating invitation for:', data.email);
+      
       // Create the invitation record
       const { data: result, error } = await supabase
         .from('admin_invitations')
@@ -60,9 +62,15 @@ export default function AdminInvitationModal({ isOpen, onClose }: AdminInvitatio
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating invitation:', error);
+        throw error;
+      }
+
+      console.log('Invitation created:', result);
 
       // Send the invitation email
+      console.log('Sending invitation email...');
       const emailResponse = await supabase.functions.invoke('send-invitation-email', {
         body: {
           email: data.email,
@@ -72,14 +80,11 @@ export default function AdminInvitationModal({ isOpen, onClose }: AdminInvitatio
         },
       });
 
+      console.log('Email response:', emailResponse);
+
       if (emailResponse.error) {
         console.error('Email sending error:', emailResponse.error);
-        // Don't throw here - invitation is created, just email failed
-        toast({
-          title: 'Invitation created',
-          description: 'Invitation created but email failed to send. You can copy the link manually.',
-          variant: 'destructive',
-        });
+        throw new Error(`Email failed to send: ${emailResponse.error.message}`);
       }
 
       return result;
@@ -94,6 +99,7 @@ export default function AdminInvitationModal({ isOpen, onClose }: AdminInvitatio
       onClose();
     },
     onError: (error: any) => {
+      console.error('Mutation error:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to create invitation',

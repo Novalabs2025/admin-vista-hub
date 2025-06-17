@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,12 +14,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Trash2, UserPlus } from 'lucide-react';
+import { Copy, Trash2, UserPlus, Mail } from 'lucide-react';
 import AdminInvitationModal from './AdminInvitationModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminInvitationsTable() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: invitations, isLoading } = useQuery({
@@ -31,6 +34,44 @@ export default function AdminInvitationsTable() {
 
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  const resendEmailMutation = useMutation({
+    mutationFn: async (invitation: any) => {
+      console.log('Resending email for invitation:', invitation.email);
+      
+      const emailResponse = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email: invitation.email,
+          role: invitation.role,
+          invitationToken: invitation.invitation_token,
+          inviterName: user?.user_metadata?.full_name || user?.email,
+        },
+      });
+
+      console.log('Resend email response:', emailResponse);
+
+      if (emailResponse.error) {
+        console.error('Email resend error:', emailResponse.error);
+        throw new Error(`Failed to send email: ${emailResponse.error.message}`);
+      }
+
+      return emailResponse;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Email sent',
+        description: 'Invitation email has been sent successfully.',
+      });
+    },
+    onError: (error: any) => {
+      console.error('Resend email error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send email',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -149,13 +190,23 @@ export default function AdminInvitationsTable() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         {!invitation.accepted && !isExpired(invitation.expires_at) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyInvitationLink(invitation.invitation_token)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyInvitationLink(invitation.invitation_token)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => resendEmailMutation.mutate(invitation)}
+                              disabled={resendEmailMutation.isPending}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                         <Button
                           variant="outline"
