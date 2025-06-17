@@ -30,6 +30,9 @@ enable_signup = true
 [functions]
   [functions.paystack-webhook]
     verify_jwt = false
+    
+  [functions.whatsapp-voice-webhook]
+    verify_jwt = false
 
 [realtime]
 enabled = true

@@ -305,6 +305,50 @@ export type Database = {
           },
         ]
       }
+      audio_files: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          duration_seconds: number | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string
+          id: string
+          related_message_id: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type: string
+          id?: string
+          related_message_id?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          related_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_files_related_message_id_fkey"
+            columns: ["related_message_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_voice_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auto_reminders: {
         Row: {
           appointment_id: string
@@ -1433,6 +1477,66 @@ export type Database = {
           created_at?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_voice_messages: {
+        Row: {
+          agent_id: string | null
+          conversation_id: string | null
+          created_at: string
+          from_number: string
+          id: string
+          media_content_type: string | null
+          media_url: string | null
+          message_sid: string
+          response_audio_path: string | null
+          response_sent: boolean | null
+          response_text: string | null
+          seeker_id: string | null
+          to_number: string
+          transcription: string | null
+          transcription_status: string | null
+          updated_at: string
+          voice_file_path: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          from_number: string
+          id?: string
+          media_content_type?: string | null
+          media_url?: string | null
+          message_sid: string
+          response_audio_path?: string | null
+          response_sent?: boolean | null
+          response_text?: string | null
+          seeker_id?: string | null
+          to_number: string
+          transcription?: string | null
+          transcription_status?: string | null
+          updated_at?: string
+          voice_file_path?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          from_number?: string
+          id?: string
+          media_content_type?: string | null
+          media_url?: string | null
+          message_sid?: string
+          response_audio_path?: string | null
+          response_sent?: boolean | null
+          response_text?: string | null
+          seeker_id?: string | null
+          to_number?: string
+          transcription?: string | null
+          transcription_status?: string | null
+          updated_at?: string
+          voice_file_path?: string | null
         }
         Relationships: []
       }
