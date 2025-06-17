@@ -20,6 +20,21 @@ export interface Interaction {
   created_at: string;
 }
 
+interface CreateInteractionData {
+  agent_id: string;
+  seeker_name: string;
+  interaction_type: string;
+  seeker_id?: string;
+  seeker_contact?: string;
+  deal_id?: string;
+  appointment_id?: string;
+  interaction_date?: string;
+  duration_minutes?: number;
+  outcome?: string;
+  notes?: string;
+  attachments?: any;
+}
+
 export const useInteractions = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -41,10 +56,10 @@ export const useInteractions = () => {
   });
 
   const createInteraction = useMutation({
-    mutationFn: async (interactionData: Partial<Interaction>) => {
+    mutationFn: async (interactionData: CreateInteractionData) => {
       const { data, error } = await supabase
         .from('agent_seeker_interactions')
-        .insert([interactionData])
+        .insert(interactionData)
         .select()
         .single();
       

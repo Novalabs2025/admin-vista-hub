@@ -23,6 +23,20 @@ export interface Appointment {
   updated_at: string;
 }
 
+interface CreateAppointmentData {
+  agent_id: string;
+  seeker_name: string;
+  appointment_date: string;
+  appointment_type: string;
+  seeker_email?: string;
+  seeker_phone?: string;
+  property_id?: string;
+  notes?: string;
+  location?: string;
+  duration_minutes?: number;
+  status?: string;
+}
+
 export const useAppointments = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -44,10 +58,10 @@ export const useAppointments = () => {
   });
 
   const createAppointment = useMutation({
-    mutationFn: async (appointmentData: Partial<Appointment>) => {
+    mutationFn: async (appointmentData: CreateAppointmentData) => {
       const { data, error } = await supabase
         .from('appointments')
-        .insert([appointmentData])
+        .insert(appointmentData)
         .select()
         .single();
       

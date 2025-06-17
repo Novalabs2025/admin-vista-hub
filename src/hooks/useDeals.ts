@@ -23,6 +23,21 @@ export interface Deal {
   updated_at: string;
 }
 
+interface CreateDealData {
+  agent_id: string;
+  seeker_name: string;
+  stage: string;
+  seeker_email?: string;
+  seeker_phone?: string;
+  property_id?: string;
+  deal_value?: number;
+  commission_amount?: number;
+  probability?: number;
+  expected_close_date?: string;
+  source?: string;
+  notes?: string;
+}
+
 export const useDeals = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -44,10 +59,10 @@ export const useDeals = () => {
   });
 
   const createDeal = useMutation({
-    mutationFn: async (dealData: Partial<Deal>) => {
+    mutationFn: async (dealData: CreateDealData) => {
       const { data, error } = await supabase
         .from('deals')
-        .insert([dealData])
+        .insert(dealData)
         .select()
         .single();
       
