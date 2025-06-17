@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppointments, Appointment } from '@/hooks/useAppointments';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface AppointmentModalProps {
 
 export default function AppointmentModal({ isOpen, onClose, appointment }: AppointmentModalProps) {
   const { createAppointment, updateAppointment } = useAppointments();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     seeker_name: appointment?.seeker_name || '',
     seeker_email: appointment?.seeker_email || '',
@@ -30,8 +32,14 @@ export default function AppointmentModal({ isOpen, onClose, appointment }: Appoi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user?.id) {
+      console.error('User not authenticated');
+      return;
+    }
+
     const appointmentData = {
       ...formData,
+      agent_id: user.id,
       appointment_date: new Date(formData.appointment_date).toISOString(),
     };
 
