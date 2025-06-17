@@ -2,9 +2,13 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarDays, Users, TrendingUp, Clock } from 'lucide-react';
+import { CalendarDays, Users, TrendingUp, Clock, BarChart3 } from 'lucide-react';
 import AppointmentsTable from '@/components/crm/AppointmentsTable';
 import DealsTable from '@/components/crm/DealsTable';
+import SuccessMetricsOverview from '@/components/crm/SuccessMetricsOverview';
+import ConversionFunnel from '@/components/crm/ConversionFunnel';
+import ResponseTimeChart from '@/components/crm/ResponseTimeChart';
+import EngagementMetricsTable from '@/components/crm/EngagementMetricsTable';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useDeals } from '@/hooks/useDeals';
 import { useInteractions } from '@/hooks/useInteractions';
@@ -28,7 +32,7 @@ export default function CRM() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">CRM Dashboard</h1>
-        <p className="text-gray-600">Manage appointments, track deals, and monitor interactions</p>
+        <p className="text-gray-600">Manage appointments, track deals, and monitor performance</p>
       </div>
 
       {/* Stats Cards */}
@@ -92,6 +96,7 @@ export default function CRM() {
           <TabsTrigger value="appointments">Appointments</TabsTrigger>
           <TabsTrigger value="deals">Deals</TabsTrigger>
           <TabsTrigger value="interactions">Interactions</TabsTrigger>
+          <TabsTrigger value="analytics">Success Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="appointments">
@@ -124,6 +129,20 @@ export default function CRM() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          {/* Success Metrics Overview */}
+          <SuccessMetricsOverview />
+          
+          {/* Analytics Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ConversionFunnel />
+            <ResponseTimeChart />
+          </div>
+          
+          {/* Engagement Metrics Table */}
+          <EngagementMetricsTable />
         </TabsContent>
       </Tabs>
     </div>

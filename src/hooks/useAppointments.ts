@@ -1,7 +1,7 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSuccessMetrics } from './useSuccessMetrics';
 
 export interface Appointment {
   id: string;
@@ -40,6 +40,7 @@ interface CreateAppointmentData {
 export const useAppointments = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { trackEngagement, trackConversion } = useSuccessMetrics();
 
   const { data: appointments, isLoading, error } = useQuery({
     queryKey: ['appointments'],
@@ -68,8 +69,24 @@ export const useAppointments = () => {
       if (error) throw new Error(error.message);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      
+      // Track engagement and conversion
+      trackEngagement.mutate({
+        agentId: data.agent_id,
+        seekerId: data.seeker_id,
+        metricType: 'appointment_book',
+        metadata: { appointment_type: data.appointment_type }
+      });
+      
+      trackConversion.mutate({
+        agentId: data.agent_id,
+        seekerId: data.seeker_id,
+        conversionStage: 'appointment',
+        propertyId: data.property_id
+      });
+      
       toast({
         title: "Success",
         description: "Appointment created successfully",

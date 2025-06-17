@@ -1,7 +1,7 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSuccessMetrics } from './useSuccessMetrics';
 
 export interface Deal {
   id: string;
@@ -41,6 +41,7 @@ interface CreateDealData {
 export const useDeals = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { trackEngagement, trackConversion } = useSuccessMetrics();
 
   const { data: deals, isLoading, error } = useQuery({
     queryKey: ['deals'],
@@ -69,8 +70,26 @@ export const useDeals = () => {
       if (error) throw new Error(error.message);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
+      
+      // Track engagement and conversion
+      trackEngagement.mutate({
+        agentId: data.agent_id,
+        seekerId: data.seeker_id,
+        metricType: 'deal_creation',
+        metadata: { stage: data.stage, deal_value: data.deal_value }
+      });
+      
+      trackConversion.mutate({
+        agentId: data.agent_id,
+        seekerId: data.seeker_id,
+        conversionStage: data.stage,
+        dealId: data.id,
+        propertyId: data.property_id,
+        conversionValue: data.deal_value
+      });
+      
       toast({
         title: "Success",
         description: "Deal created successfully",
@@ -97,8 +116,21 @@ export const useDeals = () => {
       if (error) throw new Error(error.message);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
+      
+      // Track stage changes as conversions
+      if (data.stage) {
+        trackConversion.mutate({
+          agentId: data.agent_id,
+          seekerId: data.seeker_id,
+          conversionStage: data.stage,
+          dealId: data.id,
+          propertyId: data.property_id,
+          conversionValue: data.deal_value
+        });
+      }
+      
       toast({
         title: "Success",
         description: "Deal updated successfully",

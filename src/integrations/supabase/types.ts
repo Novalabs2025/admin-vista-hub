@@ -349,6 +349,57 @@ export type Database = {
           },
         ]
       }
+      conversation_analytics: {
+        Row: {
+          agent_id: string
+          agent_messages: number | null
+          avg_response_time_minutes: number | null
+          conversation_duration_minutes: number | null
+          conversation_id: string | null
+          created_at: string
+          engagement_score: number | null
+          first_response_time_minutes: number | null
+          id: string
+          last_activity_at: string | null
+          seeker_id: string | null
+          seeker_messages: number | null
+          total_messages: number | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          agent_messages?: number | null
+          avg_response_time_minutes?: number | null
+          conversation_duration_minutes?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          engagement_score?: number | null
+          first_response_time_minutes?: number | null
+          id?: string
+          last_activity_at?: string | null
+          seeker_id?: string | null
+          seeker_messages?: number | null
+          total_messages?: number | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          agent_messages?: number | null
+          avg_response_time_minutes?: number | null
+          conversation_duration_minutes?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          engagement_score?: number | null
+          first_response_time_minutes?: number | null
+          id?: string
+          last_activity_at?: string | null
+          seeker_id?: string | null
+          seeker_messages?: number | null
+          total_messages?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -387,6 +438,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      conversion_tracking: {
+        Row: {
+          agent_id: string
+          conversion_date: string
+          conversion_stage: string
+          conversion_value: number | null
+          created_at: string
+          deal_id: string | null
+          id: string
+          previous_stage: string | null
+          property_id: string | null
+          seeker_id: string | null
+          time_to_conversion_hours: number | null
+        }
+        Insert: {
+          agent_id: string
+          conversion_date?: string
+          conversion_stage: string
+          conversion_value?: number | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          previous_stage?: string | null
+          property_id?: string | null
+          seeker_id?: string | null
+          time_to_conversion_hours?: number | null
+        }
+        Update: {
+          agent_id?: string
+          conversion_date?: string
+          conversion_stage?: string
+          conversion_value?: number | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          previous_stage?: string | null
+          property_id?: string | null
+          seeker_id?: string | null
+          time_to_conversion_hours?: number | null
+        }
+        Relationships: []
       }
       deals: {
         Row: {
@@ -455,6 +548,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      engagement_metrics: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          interaction_date: string
+          metadata: Json | null
+          metric_type: string
+          metric_value: number | null
+          seeker_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          interaction_date?: string
+          metadata?: Json | null
+          metric_type: string
+          metric_value?: number | null
+          seeker_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          interaction_date?: string
+          metadata?: Json | null
+          metric_type?: string
+          metric_value?: number | null
+          seeker_id?: string | null
+        }
+        Relationships: []
       }
       lead_ai_scores: {
         Row: {
@@ -1238,6 +1364,60 @@ export type Database = {
         }
         Relationships: []
       }
+      success_metrics_summary: {
+        Row: {
+          agent_id: string
+          avg_deal_closure_time_days: number | null
+          avg_response_time_minutes: number | null
+          conversion_rate: number | null
+          created_at: string
+          deals_closed: number | null
+          engagement_breakdown: Json | null
+          id: string
+          period_end: string
+          period_start: string
+          top_performing_hours: Json | null
+          total_conversations: number | null
+          total_deal_value: number | null
+          total_engagements: number | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          avg_deal_closure_time_days?: number | null
+          avg_response_time_minutes?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          deals_closed?: number | null
+          engagement_breakdown?: Json | null
+          id?: string
+          period_end: string
+          period_start: string
+          top_performing_hours?: Json | null
+          total_conversations?: number | null
+          total_deal_value?: number | null
+          total_engagements?: number | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          avg_deal_closure_time_days?: number | null
+          avg_response_time_minutes?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          deals_closed?: number | null
+          engagement_breakdown?: Json | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          top_performing_hours?: Json | null
+          total_conversations?: number | null
+          total_deal_value?: number | null
+          total_engagements?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1305,6 +1485,27 @@ export type Database = {
       }
       mark_notification_read: {
         Args: { notification_id: string; is_read?: boolean }
+        Returns: undefined
+      }
+      track_conversion: {
+        Args: {
+          p_agent_id: string
+          p_seeker_id: string
+          p_conversion_stage: string
+          p_deal_id?: string
+          p_property_id?: string
+          p_conversion_value?: number
+        }
+        Returns: undefined
+      }
+      track_engagement_metric: {
+        Args: {
+          p_agent_id: string
+          p_seeker_id: string
+          p_metric_type: string
+          p_metric_value?: number
+          p_metadata?: Json
+        }
         Returns: undefined
       }
     }
