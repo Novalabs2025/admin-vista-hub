@@ -4,20 +4,32 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/AuthContext';
 
 type Notification = Tables<'notifications'>;
 
 export const useNotifications = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user, userRoles } = useAuth();
+
+  // Check if user is admin or super_admin
+  const isAdmin = userRoles?.includes('admin') || userRoles?.includes('super_admin');
 
   const { data: notifications, ...queryInfo } = useQuery({
     queryKey: ['notifications'],
     queryFn: async (): Promise<Notification[]> => {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from('notifications').select('*');
+      
+      if (isAdmin) {
+        // Admins get both their own notifications and system-wide notifications (user_id is null)
+        query = query.or(`user_id.eq.${user?.id},user_id.is.null`);
+      } else {
+        // Regular users only get their own notifications
+        query = query.eq('user_id', user?.id);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) {
         console.error("Error fetching notifications:", error);
@@ -25,6 +37,7 @@ export const useNotifications = () => {
       }
       return data || [];
     },
+    enabled: !!user, // Only run query when user is available
   });
 
   useEffect(() => {
@@ -35,11 +48,17 @@ export const useNotifications = () => {
         console.log('New notification received!', payload);
         const newNotification = payload.new as Notification;
         
-        // Show toast notification
-        toast({
-          title: newNotification.title,
-          description: newNotification.description,
-        });
+        // Only show toast for notifications relevant to current user
+        const isRelevantNotification = isAdmin ? 
+          (newNotification.user_id === user?.id || newNotification.user_id === null) :
+          (newNotification.user_id === user?.id);
+          
+        if (isRelevantNotification) {
+          toast({
+            title: newNotification.title,
+            description: newNotification.description,
+          });
+        }
         
         // Invalidate queries to refresh the UI
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -78,7 +97,9 @@ export const useNotifications = () => {
       console.log('Main notification channel subscription status:', subscription);
     };
 
-    setupChannel();
+    if (user) {
+      setupChannel();
+    }
 
     return () => {
       if (channel) {
@@ -87,7 +108,7 @@ export const useNotifications = () => {
         channel = null;
       }
     };
-  }, [queryClient, toast]);
+  }, [queryClient, toast, user, isAdmin]);
 
   const unreadCount = notifications?.filter(n => !n.read).length || 0;
 
