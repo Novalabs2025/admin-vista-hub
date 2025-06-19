@@ -110,8 +110,19 @@ serve(async (req) => {
       throw updateError;
     }
 
-    // Generate intelligent response based on transcription
-    const responseText = await generateResponse(transcription);
+    // Get voice message details to find the agent
+    const { data: voiceMessage, error: voiceError } = await supabase
+      .from('whatsapp_voice_messages')
+      .select('*')
+      .eq('id', voiceMessageId)
+      .single();
+
+    if (voiceError || !voiceMessage) {
+      throw new Error('Voice message not found');
+    }
+
+    // Generate intelligent response with property context
+    const responseText = await generateContextualResponse(transcription, voiceMessage.agent_id);
 
     // Generate audio response
     const audioResponseData = await generateAudioResponse(responseText);
@@ -168,9 +179,63 @@ serve(async (req) => {
   }
 });
 
-async function generateResponse(transcription: string): Promise<string> {
-  const prompt = `You are a helpful real estate assistant. A client sent this voice message: "${transcription}". 
-  Provide a helpful, professional response about real estate services. Keep it concise and friendly.`;
+async function generateContextualResponse(transcription: string, agentId: string | null): Promise<string> {
+  console.log('Generating contextual response for transcription:', transcription);
+  console.log('Agent ID:', agentId);
+
+  // Get available properties from the agent or all approved properties
+  let propertiesQuery = supabase
+    .from('properties')
+    .select(`
+      id, address, city, state, price, property_type, bedrooms, bathrooms, 
+      area, description, listing_type, status
+    `)
+    .eq('status', 'approved');
+
+  // If agent ID is provided, get their properties, otherwise get all approved properties
+  if (agentId) {
+    propertiesQuery = propertiesQuery.eq('agent_id', agentId);
+  }
+
+  const { data: properties, error: propertiesError } = await propertiesQuery
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (propertiesError) {
+    console.error('Error fetching properties:', propertiesError);
+  }
+
+  console.log('Found properties:', properties?.length || 0);
+
+  // Create context about available properties
+  const propertyContext = properties?.length ? 
+    `Available Properties (${properties.length} total):
+${properties.map((p, index) => 
+  `${index + 1}. ${p.address}, ${p.city}, ${p.state} - ₦${Number(p.price).toLocaleString()} 
+     Type: ${p.property_type}, ${p.bedrooms} bed, ${p.bathrooms} bath, ${p.area} sqm
+     Listing: ${p.listing_type}, Status: ${p.status}
+     ${p.description ? 'Description: ' + p.description.substring(0, 100) + '...' : ''}`
+).join('\n')}` : 'No properties currently available.';
+
+  // Analyze the transcription to understand what the user is looking for
+  const prompt = `You are a professional real estate assistant. A client sent this voice message: "${transcription}"
+
+${propertyContext}
+
+Based on the client's message and the available properties above, provide a helpful, accurate response that:
+1. Addresses their specific inquiry
+2. Only mentions properties that actually exist in the list above
+3. Provides accurate details (price, location, features) from the property data
+4. If they're searching for specific criteria, match only properties that meet those criteria
+5. Be precise about the number of properties - only count properties that match their request
+6. If no properties match their criteria, be honest about it
+7. Keep the response conversational and helpful
+8. Include specific property details like address, price, and key features
+9. Suggest next steps (viewing, more information, etc.)
+
+Important: Only reference properties that are actually in the available properties list above. Do not make up or assume property details.`;
+
+  console.log('Sending prompt to OpenAI...');
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -179,14 +244,23 @@ async function generateResponse(transcription: string): Promise<string> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 200,
+      max_tokens: 500,
+      temperature: 0.3, // Lower temperature for more consistent, accurate responses
     }),
   });
 
+  if (!response.ok) {
+    console.error('OpenAI response error:', await response.text());
+    throw new Error('Failed to generate response');
+  }
+
   const result = await response.json();
-  return result.choices[0]?.message?.content || 'Thank you for your message. Our team will get back to you soon.';
+  const responseText = result.choices[0]?.message?.content || 'Thank you for your message. Our team will get back to you soon with property details.';
+  
+  console.log('Generated response:', responseText);
+  return responseText;
 }
 
 async function generateAudioResponse(text: string): Promise<{ audioPath: string }> {

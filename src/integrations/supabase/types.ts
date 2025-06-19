@@ -1549,6 +1549,10 @@ export type Database = {
         Args: { target_date?: string }
         Returns: undefined
       }
+      calculate_lead_ai_score: {
+        Args: { p_lead_id: string; p_agent_id: string }
+        Returns: undefined
+      }
       detect_image_duplicates: {
         Args: {
           p_image_hash: string
@@ -1570,6 +1574,15 @@ export type Database = {
       get_unread_notification_count: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      handle_agent_action: {
+        Args: {
+          p_agent_id: string
+          p_lead_id: string
+          p_action_type: string
+          p_notes?: string
+        }
+        Returns: string
       }
       has_role: {
         Args: { role_to_check: Database["public"]["Enums"]["app_role"] }
