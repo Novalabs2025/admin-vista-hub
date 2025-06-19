@@ -51,6 +51,10 @@ serve(async (req) => {
     const { voiceMessageId, mediaUrl } = await req.json();
     console.log('Processing voice message:', voiceMessageId);
 
+    if (!mediaUrl) {
+      throw new Error('No media URL provided');
+    }
+
     // Download the audio file from Twilio
     const twilioAuth = btoa(`${Deno.env.get('TWILIO_ACCOUNT_SID')}:${Deno.env.get('TWILIO_AUTH_TOKEN')}`);
     
@@ -61,15 +65,19 @@ serve(async (req) => {
     });
 
     if (!audioResponse.ok) {
-      throw new Error('Failed to download audio from Twilio');
+      throw new Error(`Failed to download audio from Twilio: ${audioResponse.status} ${audioResponse.statusText}`);
     }
 
     const audioBuffer = await audioResponse.arrayBuffer();
-    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+    
+    if (audioBuffer.byteLength === 0) {
+      throw new Error('Empty audio file received');
+    }
 
     console.log('Audio downloaded, size:', audioBuffer.byteLength);
 
     // Convert to binary for OpenAI
+    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
     const binaryAudio = processBase64Chunks(audioBase64);
     
     // Transcribe using OpenAI Whisper
@@ -87,11 +95,17 @@ serve(async (req) => {
     });
 
     if (!transcriptionResponse.ok) {
-      throw new Error(`OpenAI transcription error: ${await transcriptionResponse.text()}`);
+      const errorText = await transcriptionResponse.text();
+      console.error('OpenAI transcription error:', errorText);
+      throw new Error(`OpenAI transcription failed: ${transcriptionResponse.status} - ${errorText}`);
     }
 
     const transcriptionResult = await transcriptionResponse.json();
     const transcription = transcriptionResult.text;
+
+    if (!transcription || transcription.trim() === '') {
+      throw new Error('Empty transcription received');
+    }
 
     console.log('Transcription completed:', transcription);
 
@@ -157,8 +171,16 @@ serve(async (req) => {
   } catch (error) {
     console.error('Processing error:', error);
 
+    // Try to get voiceMessageId from request body for error handling
+    let voiceMessageId = null;
+    try {
+      const body = await req.json();
+      voiceMessageId = body.voiceMessageId;
+    } catch (e) {
+      console.error('Could not parse request body for error handling:', e);
+    }
+
     // Update status to failed
-    const { voiceMessageId } = await req.json();
     if (voiceMessageId) {
       await supabase
         .from('whatsapp_voice_messages')
@@ -183,111 +205,209 @@ async function generateContextualResponse(transcription: string, agentId: string
   console.log('Generating contextual response for transcription:', transcription);
   console.log('Agent ID:', agentId);
 
-  // Get available properties from the agent or all approved properties
-  let propertiesQuery = supabase
-    .from('properties')
-    .select(`
-      id, address, city, state, price, property_type, bedrooms, bathrooms, 
-      area, description, listing_type, status
-    `)
-    .eq('status', 'approved');
+  try {
+    // Parse the user's request to extract search criteria
+    const searchCriteria = extractSearchCriteria(transcription);
+    console.log('Extracted search criteria:', searchCriteria);
 
-  // If agent ID is provided, get their properties, otherwise get all approved properties
-  if (agentId) {
-    propertiesQuery = propertiesQuery.eq('agent_id', agentId);
+    // Build dynamic query based on search criteria
+    let propertiesQuery = supabase
+      .from('properties')
+      .select(`
+        id, address, city, state, price, property_type, bedrooms, bathrooms, 
+        area, description, listing_type, status, landmark
+      `)
+      .eq('status', 'approved');
+
+    // Apply location filters
+    if (searchCriteria.location) {
+      propertiesQuery = propertiesQuery.or(
+        `city.ilike.%${searchCriteria.location}%,state.ilike.%${searchCriteria.location}%,address.ilike.%${searchCriteria.location}%`
+      );
+    }
+
+    // Apply property type filter
+    if (searchCriteria.propertyType) {
+      propertiesQuery = propertiesQuery.ilike('property_type', `%${searchCriteria.propertyType}%`);
+    }
+
+    // Apply listing type filter (sale/rent)
+    if (searchCriteria.listingType) {
+      propertiesQuery = propertiesQuery.ilike('listing_type', `%${searchCriteria.listingType}%`);
+    }
+
+    // Apply price range filter
+    if (searchCriteria.minPrice) {
+      propertiesQuery = propertiesQuery.gte('price', searchCriteria.minPrice);
+    }
+    if (searchCriteria.maxPrice) {
+      propertiesQuery = propertiesQuery.lte('price', searchCriteria.maxPrice);
+    }
+
+    // Apply bedroom filter
+    if (searchCriteria.bedrooms) {
+      propertiesQuery = propertiesQuery.gte('bedrooms', searchCriteria.bedrooms);
+    }
+
+    // If agent ID is provided, prioritize their properties but also include others
+    if (agentId) {
+      propertiesQuery = propertiesQuery.order('agent_id', { ascending: false });
+    }
+
+    const { data: properties, error: propertiesError } = await propertiesQuery
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (propertiesError) {
+      console.error('Error fetching properties:', propertiesError);
+      return 'I apologize, but I encountered an error while searching for properties. Please try again or contact our support team.';
+    }
+
+    console.log('Found properties:', properties?.length || 0);
+
+    // Generate accurate response based on actual results
+    return generateAccurateResponse(transcription, properties || [], searchCriteria);
+
+  } catch (error) {
+    console.error('Error in generateContextualResponse:', error);
+    return 'I apologize, but I encountered an error while processing your request. Please try again or contact our support team.';
   }
+}
 
-  const { data: properties, error: propertiesError } = await propertiesQuery
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  if (propertiesError) {
-    console.error('Error fetching properties:', propertiesError);
-  }
-
-  console.log('Found properties:', properties?.length || 0);
-
-  // Create context about available properties
-  const propertyContext = properties?.length ? 
-    `Available Properties (${properties.length} total):
-${properties.map((p, index) => 
-  `${index + 1}. ${p.address}, ${p.city}, ${p.state} - ₦${Number(p.price).toLocaleString()} 
-     Type: ${p.property_type}, ${p.bedrooms} bed, ${p.bathrooms} bath, ${p.area} sqm
-     Listing: ${p.listing_type}, Status: ${p.status}
-     ${p.description ? 'Description: ' + p.description.substring(0, 100) + '...' : ''}`
-).join('\n')}` : 'No properties currently available.';
-
-  // Analyze the transcription to understand what the user is looking for
-  const prompt = `You are a professional real estate assistant. A client sent this voice message: "${transcription}"
-
-${propertyContext}
-
-Based on the client's message and the available properties above, provide a helpful, accurate response that:
-1. Addresses their specific inquiry
-2. Only mentions properties that actually exist in the list above
-3. Provides accurate details (price, location, features) from the property data
-4. If they're searching for specific criteria, match only properties that meet those criteria
-5. Be precise about the number of properties - only count properties that match their request
-6. If no properties match their criteria, be honest about it
-7. Keep the response conversational and helpful
-8. Include specific property details like address, price, and key features
-9. Suggest next steps (viewing, more information, etc.)
-
-Important: Only reference properties that are actually in the available properties list above. Do not make up or assume property details.`;
-
-  console.log('Sending prompt to OpenAI...');
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 500,
-      temperature: 0.3, // Lower temperature for more consistent, accurate responses
-    }),
-  });
-
-  if (!response.ok) {
-    console.error('OpenAI response error:', await response.text());
-    throw new Error('Failed to generate response');
-  }
-
-  const result = await response.json();
-  const responseText = result.choices[0]?.message?.content || 'Thank you for your message. Our team will get back to you soon with property details.';
+function extractSearchCriteria(transcription: string) {
+  const text = transcription.toLowerCase();
   
-  console.log('Generated response:', responseText);
-  return responseText;
+  // Extract location
+  const locationKeywords = ['abuja', 'lagos', 'port harcourt', 'kano', 'ibadan', 'kaduna', 'jos', 'warri', 'benin', 'maiduguri', 'fct', 'karu', 'kubwa', 'gwarinpa', 'wuse', 'garki', 'utako', 'jabi'];
+  let location = null;
+  for (const loc of locationKeywords) {
+    if (text.includes(loc)) {
+      location = loc;
+      break;
+    }
+  }
+  
+  // Extract property type
+  const propertyTypes = ['land', 'house', 'apartment', 'duplex', 'bungalow', 'flat', 'office', 'shop', 'warehouse'];
+  let propertyType = null;
+  for (const type of propertyTypes) {
+    if (text.includes(type)) {
+      propertyType = type;
+      break;
+    }
+  }
+  
+  // Extract listing type
+  let listingType = null;
+  if (text.includes('for sale') || text.includes('to buy') || text.includes('purchase')) {
+    listingType = 'sale';
+  } else if (text.includes('for rent') || text.includes('to rent') || text.includes('rental')) {
+    listingType = 'rent';
+  }
+  
+  // Extract price range (basic extraction)
+  let minPrice = null;
+  let maxPrice = null;
+  const priceMatch = text.match(/(\d+(?:k|m|million|thousand))/g);
+  if (priceMatch) {
+    // Simple price extraction - can be enhanced
+    const price = priceMatch[0];
+    if (price.includes('k')) {
+      minPrice = parseInt(price.replace('k', '')) * 1000;
+    } else if (price.includes('m') || price.includes('million')) {
+      minPrice = parseInt(price.replace(/m|million/, '')) * 1000000;
+    }
+  }
+  
+  // Extract bedrooms
+  let bedrooms = null;
+  const bedroomMatch = text.match(/(\d+)\s*(?:bed|bedroom)/);
+  if (bedroomMatch) {
+    bedrooms = parseInt(bedroomMatch[1]);
+  }
+  
+  return {
+    location,
+    propertyType,
+    listingType,
+    minPrice,
+    maxPrice,
+    bedrooms
+  };
+}
+
+function generateAccurateResponse(transcription: string, properties: any[], searchCriteria: any): string {
+  const actualCount = properties.length;
+  
+  if (actualCount === 0) {
+    return `I searched for ${searchCriteria.propertyType || 'properties'} in ${searchCriteria.location || 'your specified location'} ${searchCriteria.listingType ? 'for ' + searchCriteria.listingType : ''}, but I couldn't find any properties that match your criteria at the moment. You might want to try:\n\n1. Broadening your search area\n2. Adjusting your budget range\n3. Considering different property types\n\nWould you like me to search with different criteria?`;
+  }
+  
+  let response = `Great! I found ${actualCount} ${searchCriteria.propertyType || 'property'}${actualCount > 1 ? 'ies' : ''} in ${searchCriteria.location || 'your area'} ${searchCriteria.listingType ? 'for ' + searchCriteria.listingType : ''}:\n\n`;
+  
+  properties.forEach((property, index) => {
+    response += `${index + 1}. ${property.property_type.toUpperCase()} | FOR ${property.listing_type.toUpperCase()}\n`;
+    response += `📍 ${property.address}, ${property.city}, ${property.state}\n`;
+    response += `💰 ₦${Number(property.price).toLocaleString()}${property.listing_type === 'rent' ? '/year' : ''}\n`;
+    
+    if (property.bedrooms) {
+      response += `🛏️ ${property.bedrooms} bed${property.bedrooms > 1 ? 's' : ''}`;
+    }
+    if (property.bathrooms) {
+      response += ` 🚿 ${property.bathrooms} bath${property.bathrooms > 1 ? 's' : ''}`;
+    }
+    if (property.area) {
+      response += ` 📐 ${property.area}m²`;
+    }
+    response += '\n';
+    
+    if (property.description) {
+      response += `📝 ${property.description.substring(0, 100)}${property.description.length > 100 ? '...' : ''}\n`;
+    }
+    
+    if (property.landmark) {
+      response += `🗺️ Near ${property.landmark}\n`;
+    }
+    
+    response += '\n';
+  });
+  
+  response += `Would you like more details about any of these properties, or would you like me to help you contact an agent for viewings?`;
+  
+  return response;
 }
 
 async function generateAudioResponse(text: string): Promise<{ audioPath: string }> {
-  const response = await fetch('https://api.openai.com/v1/audio/speech', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'tts-1',
-      input: text,
-      voice: 'alloy',
-      response_format: 'mp3',
-    }),
-  });
+  try {
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'tts-1',
+        input: text,
+        voice: 'alloy',
+        response_format: 'mp3',
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error('Failed to generate audio response');
+    if (!response.ok) {
+      throw new Error('Failed to generate audio response');
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // In a real implementation, you'd save this to storage
+    // For now, we'll return a placeholder path
+    const audioPath = `audio_responses/${Date.now()}.mp3`;
+    
+    return { audioPath };
+  } catch (error) {
+    console.error('Error generating audio response:', error);
+    // Return empty path if audio generation fails
+    return { audioPath: '' };
   }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-  
-  // In a real implementation, you'd save this to storage
-  // For now, we'll return a placeholder path
-  const audioPath = `audio_responses/${Date.now()}.mp3`;
-  
-  return { audioPath };
 }
