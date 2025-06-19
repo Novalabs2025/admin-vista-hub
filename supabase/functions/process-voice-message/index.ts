@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
@@ -210,7 +209,7 @@ async function generateContextualResponse(transcription: string, agentId: string
     const searchCriteria = extractSearchCriteria(transcription);
     console.log('Extracted search criteria:', searchCriteria);
 
-    // Build dynamic query based on search criteria
+    // Build dynamic query based on search criteria with strict matching
     let propertiesQuery = supabase
       .from('properties')
       .select(`
@@ -219,19 +218,20 @@ async function generateContextualResponse(transcription: string, agentId: string
       `)
       .eq('status', 'approved');
 
-    // Apply location filters
+    // Apply STRICT location filters - must match exactly
     if (searchCriteria.location) {
+      const locationLower = searchCriteria.location.toLowerCase();
       propertiesQuery = propertiesQuery.or(
-        `city.ilike.%${searchCriteria.location}%,state.ilike.%${searchCriteria.location}%,address.ilike.%${searchCriteria.location}%`
+        `city.ilike.%${locationLower}%,state.ilike.%${locationLower}%,address.ilike.%${locationLower}%`
       );
     }
 
-    // Apply property type filter
+    // Apply STRICT property type filter - must match exactly
     if (searchCriteria.propertyType) {
       propertiesQuery = propertiesQuery.ilike('property_type', `%${searchCriteria.propertyType}%`);
     }
 
-    // Apply listing type filter (sale/rent)
+    // Apply STRICT listing type filter (sale/rent) - must match exactly
     if (searchCriteria.listingType) {
       propertiesQuery = propertiesQuery.ilike('listing_type', `%${searchCriteria.listingType}%`);
     }
@@ -249,24 +249,46 @@ async function generateContextualResponse(transcription: string, agentId: string
       propertiesQuery = propertiesQuery.gte('bedrooms', searchCriteria.bedrooms);
     }
 
-    // If agent ID is provided, prioritize their properties but also include others
-    if (agentId) {
-      propertiesQuery = propertiesQuery.order('agent_id', { ascending: false });
-    }
-
     const { data: properties, error: propertiesError } = await propertiesQuery
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(20); // Get more to filter accurately
 
     if (propertiesError) {
       console.error('Error fetching properties:', propertiesError);
       return 'I apologize, but I encountered an error while searching for properties. Please try again or contact our support team.';
     }
 
-    console.log('Found properties:', properties?.length || 0);
+    // STRICT POST-FILTER to ensure exact matches
+    let filteredProperties = properties || [];
+    
+    if (searchCriteria.location) {
+      const locationLower = searchCriteria.location.toLowerCase();
+      filteredProperties = filteredProperties.filter(prop => 
+        prop.city?.toLowerCase().includes(locationLower) ||
+        prop.state?.toLowerCase().includes(locationLower) ||
+        prop.address?.toLowerCase().includes(locationLower)
+      );
+    }
 
-    // Generate accurate response based on actual results
-    return generateAccurateResponse(transcription, properties || [], searchCriteria);
+    if (searchCriteria.propertyType) {
+      const typeLower = searchCriteria.propertyType.toLowerCase();
+      filteredProperties = filteredProperties.filter(prop => 
+        prop.property_type?.toLowerCase().includes(typeLower)
+      );
+    }
+
+    if (searchCriteria.listingType) {
+      const listingLower = searchCriteria.listingType.toLowerCase();
+      filteredProperties = filteredProperties.filter(prop => 
+        prop.listing_type?.toLowerCase().includes(listingLower)
+      );
+    }
+
+    console.log('Final filtered properties:', filteredProperties.length);
+    console.log('Properties found:', JSON.stringify(filteredProperties, null, 2));
+
+    // Generate accurate response based on actual filtered results
+    return generateAccurateResponse(transcription, filteredProperties, searchCriteria);
 
   } catch (error) {
     console.error('Error in generateContextualResponse:', error);
@@ -277,8 +299,12 @@ async function generateContextualResponse(transcription: string, agentId: string
 function extractSearchCriteria(transcription: string) {
   const text = transcription.toLowerCase();
   
-  // Extract location
-  const locationKeywords = ['abuja', 'lagos', 'port harcourt', 'kano', 'ibadan', 'kaduna', 'jos', 'warri', 'benin', 'maiduguri', 'fct', 'karu', 'kubwa', 'gwarinpa', 'wuse', 'garki', 'utako', 'jabi'];
+  // Extract location with better matching
+  const locationKeywords = [
+    'abuja', 'fct', 'lagos', 'port harcourt', 'kano', 'ibadan', 'kaduna', 
+    'jos', 'warri', 'benin', 'maiduguri', 'karu', 'kubwa', 'gwarinpa', 
+    'wuse', 'garki', 'utako', 'jabi', 'asokoro', 'maitama'
+  ];
   let location = null;
   for (const loc of locationKeywords) {
     if (text.includes(loc)) {
@@ -287,7 +313,7 @@ function extractSearchCriteria(transcription: string) {
     }
   }
   
-  // Extract property type
+  // Extract property type with exact matching
   const propertyTypes = ['land', 'house', 'apartment', 'duplex', 'bungalow', 'flat', 'office', 'shop', 'warehouse'];
   let propertyType = null;
   for (const type of propertyTypes) {
@@ -297,11 +323,11 @@ function extractSearchCriteria(transcription: string) {
     }
   }
   
-  // Extract listing type
+  // Extract listing type with exact matching
   let listingType = null;
-  if (text.includes('for sale') || text.includes('to buy') || text.includes('purchase')) {
+  if (text.includes('for sale') || text.includes('to buy') || text.includes('purchase') || text.includes('sale')) {
     listingType = 'sale';
-  } else if (text.includes('for rent') || text.includes('to rent') || text.includes('rental')) {
+  } else if (text.includes('for rent') || text.includes('to rent') || text.includes('rental') || text.includes('rent')) {
     listingType = 'rent';
   }
   
@@ -310,7 +336,6 @@ function extractSearchCriteria(transcription: string) {
   let maxPrice = null;
   const priceMatch = text.match(/(\d+(?:k|m|million|thousand))/g);
   if (priceMatch) {
-    // Simple price extraction - can be enhanced
     const price = priceMatch[0];
     if (price.includes('k')) {
       minPrice = parseInt(price.replace('k', '')) * 1000;
@@ -339,14 +364,33 @@ function extractSearchCriteria(transcription: string) {
 function generateAccurateResponse(transcription: string, properties: any[], searchCriteria: any): string {
   const actualCount = properties.length;
   
+  // HONEST response when no matches found
   if (actualCount === 0) {
-    return `I searched for ${searchCriteria.propertyType || 'properties'} in ${searchCriteria.location || 'your specified location'} ${searchCriteria.listingType ? 'for ' + searchCriteria.listingType : ''}, but I couldn't find any properties that match your criteria at the moment. You might want to try:\n\n1. Broadening your search area\n2. Adjusting your budget range\n3. Considering different property types\n\nWould you like me to search with different criteria?`;
+    let searchDescription = '';
+    if (searchCriteria.propertyType) searchDescription += `${searchCriteria.propertyType} `;
+    if (searchCriteria.location) searchDescription += `in ${searchCriteria.location} `;
+    if (searchCriteria.listingType) searchDescription += `for ${searchCriteria.listingType}`;
+    
+    return `I searched for ${searchDescription.trim() || 'properties matching your criteria'}, but I couldn't find any available properties that match your exact requirements at the moment.
+
+You might want to try:
+• Broadening your search area
+• Considering different property types
+• Adjusting your budget range
+
+Would you like me to search with different criteria or help you find alternatives?`;
   }
   
-  let response = `Great! I found ${actualCount} ${searchCriteria.propertyType || 'property'}${actualCount > 1 ? 'ies' : ''} in ${searchCriteria.location || 'your area'} ${searchCriteria.listingType ? 'for ' + searchCriteria.listingType : ''}:\n\n`;
+  // Build accurate response with actual property details
+  let searchDescription = '';
+  if (searchCriteria.propertyType) searchDescription += `${searchCriteria.propertyType} `;
+  if (searchCriteria.location) searchDescription += `in ${searchCriteria.location} `;
+  if (searchCriteria.listingType) searchDescription += `for ${searchCriteria.listingType}`;
+  
+  let response = `Great! I found **${actualCount}** ${searchCriteria.propertyType || 'property'}${actualCount > 1 ? 'ies' : ''} ${searchDescription.trim()}:\n\n`;
   
   properties.forEach((property, index) => {
-    response += `${index + 1}. ${property.property_type.toUpperCase()} | FOR ${property.listing_type.toUpperCase()}\n`;
+    response += `**${index + 1}. ${property.property_type.toUpperCase()} | FOR ${property.listing_type.toUpperCase()}**\n`;
     response += `📍 ${property.address}, ${property.city}, ${property.state}\n`;
     response += `💰 ₦${Number(property.price).toLocaleString()}${property.listing_type === 'rent' ? '/year' : ''}\n`;
     
@@ -372,7 +416,7 @@ function generateAccurateResponse(transcription: string, properties: any[], sear
     response += '\n';
   });
   
-  response += `Would you like more details about any of these properties, or would you like me to help you contact an agent for viewings?`;
+  response += `Would you like more details about any of these ${actualCount} properties, or would you like me to help you contact an agent for viewings?`;
   
   return response;
 }
