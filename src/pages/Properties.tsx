@@ -1,4 +1,3 @@
-
 import Header from "@/components/dashboard/Header";
 import EnhancedPropertiesTable from "@/components/properties/EnhancedPropertiesTable";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,7 +137,7 @@ const Properties = () => {
         <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <Cardiff className="text-xs md:text-sm font-medium">Total Properties</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">Total Properties</CardTitle>
               <Home className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>

@@ -33,7 +33,7 @@ export default function EnhancedCRMDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   
   const { appointments, isLoading: appointmentsLoading, refetch: refetchAppointments } = useAppointments();
-  const { deals, isLoading: dealsLoading, refetch: refetchDeals } =Deals();
+  const { deals, isLoading: dealsLoading, refetch: refetchDeals } = useDeals();
   const { interactions, isLoading: interactionsLoading, refetch: refetchInteractions } = useInteractions();
 
   const todayAppointments = appointments?.filter(apt => {
@@ -137,7 +137,7 @@ export default function EnhancedCRMDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <Cardiff className="text-sm font-medium">Today's Appointments</CardTitle>
+            <CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
