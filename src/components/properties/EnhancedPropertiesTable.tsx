@@ -94,6 +94,25 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
         throw new Error('You must be logged in to update property status');
       }
       
+      // First check if the property exists
+      const { data: existingProperty, error: checkError } = await supabase
+        .from("properties")
+        .select("id, status")
+        .eq("id", propertyId)
+        .maybeSingle();
+        
+      if (checkError) {
+        console.error('Error checking property existence:', checkError);
+        throw new Error(`Failed to verify property: ${checkError.message}`);
+      }
+      
+      if (!existingProperty) {
+        console.error('Property not found:', propertyId);
+        throw new Error('Property not found. It may have been deleted.');
+      }
+      
+      console.log('Property exists:', existingProperty);
+      
       const updateData: any = { 
         status
       };
@@ -113,7 +132,7 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
         .update(updateData)
         .eq("id", propertyId)
         .select('*')
-        .single();
+        .maybeSingle();
         
       if (error) {
         console.error('Supabase update error:', {
