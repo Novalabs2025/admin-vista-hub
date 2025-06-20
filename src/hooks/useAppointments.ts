@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +43,7 @@ export const useAppointments = () => {
   const queryClient = useQueryClient();
   const { trackEngagement, trackConversion } = useSuccessMetrics();
 
-  const { data: appointments, isLoading, error } = useQuery({
+  const { data: appointments, isLoading, error, refetch } = useQuery({
     queryKey: ['appointments'],
     queryFn: async (): Promise<Appointment[]> => {
       const { data, error } = await supabase
@@ -158,6 +159,7 @@ export const useAppointments = () => {
     appointments,
     isLoading,
     error,
+    refetch,
     createAppointment,
     updateAppointment,
     deleteAppointment,

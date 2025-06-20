@@ -39,7 +39,7 @@ export const useInteractions = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: interactions, isLoading, error } = useQuery({
+  const { data: interactions, isLoading, error, refetch } = useQuery({
     queryKey: ['interactions'],
     queryFn: async (): Promise<Interaction[]> => {
       const { data, error } = await supabase
@@ -86,6 +86,7 @@ export const useInteractions = () => {
     interactions,
     isLoading,
     error,
+    refetch,
     createInteraction,
   };
 };
