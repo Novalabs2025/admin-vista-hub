@@ -74,11 +74,28 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
       rejection_reason?: string;
       status_change_reason?: string;
     }) => {
-      console.log('Updating property status:', { propertyId, status, rejection_reason, status_change_reason });
+      console.log('Starting property status update:', { 
+        propertyId, 
+        status, 
+        rejection_reason, 
+        status_change_reason 
+      });
+      
+      // Check current user session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Current session:', session?.user?.id);
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw new Error('Authentication error: ' + sessionError.message);
+      }
+      
+      if (!session) {
+        throw new Error('You must be logged in to update property status');
+      }
       
       const updateData: any = { 
-        status, 
-        updated_at: new Date().toISOString()
+        status
       };
       
       if (rejection_reason) {
@@ -89,23 +106,35 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
         updateData.status_change_reason = status_change_reason;
       }
       
+      console.log('Update data:', updateData);
+      
       const { data, error } = await supabase
         .from("properties")
         .update(updateData)
         .eq("id", propertyId)
-        .select()
+        .select('*')
         .single();
         
       if (error) {
-        console.error('Property update error:', error);
-        throw error;
+        console.error('Supabase update error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw new Error(`Database error: ${error.message}`);
+      }
+      
+      if (!data) {
+        console.error('No data returned after update');
+        throw new Error('Property update failed - no data returned');
       }
       
       console.log('Property updated successfully:', data);
       return data;
     },
     onSuccess: (data) => {
-      console.log('Property status update successful:', data);
+      console.log('Mutation success callback:', data);
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       toast({
         title: "Success",
@@ -117,25 +146,32 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
       setReactivationReason("");
     },
     onError: (error) => {
-      console.error('Property status update failed:', error);
+      console.error('Mutation error callback:', error);
       toast({
-        title: "Error",
-        description: "Failed to update property status: " + (error as Error).message,
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
     },
   });
 
   const handleApprove = async (propertyId: string) => {
-    console.log('Approving property:', propertyId);
+    console.log('handleApprove called for property:', propertyId);
+    
+    if (updatePropertyStatusMutation.isPending) {
+      console.log('Mutation already in progress, skipping...');
+      return;
+    }
+    
     try {
       await updatePropertyStatusMutation.mutateAsync({ 
         propertyId, 
         status: "approved",
         status_change_reason: "Property approved by admin"
       });
+      console.log('Property approval completed successfully');
     } catch (error) {
-      console.error('Failed to approve property:', error);
+      console.error('Property approval failed:', error);
     }
   };
 
