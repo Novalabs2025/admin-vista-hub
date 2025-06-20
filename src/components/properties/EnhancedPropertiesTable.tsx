@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Table,
@@ -75,22 +74,42 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
       rejection_reason?: string;
       status_change_reason?: string;
     }) => {
-      const { error } = await supabase
+      console.log('Updating property status:', { propertyId, status, rejection_reason, status_change_reason });
+      
+      const updateData: any = { 
+        status, 
+        updated_at: new Date().toISOString()
+      };
+      
+      if (rejection_reason) {
+        updateData.rejection_reason = rejection_reason;
+      }
+      
+      if (status_change_reason) {
+        updateData.status_change_reason = status_change_reason;
+      }
+      
+      const { data, error } = await supabase
         .from("properties")
-        .update({ 
-          status, 
-          rejection_reason: rejection_reason || null,
-          status_change_reason: status_change_reason || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", propertyId);
-      if (error) throw error;
+        .update(updateData)
+        .eq("id", propertyId)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('Property update error:', error);
+        throw error;
+      }
+      
+      console.log('Property updated successfully:', data);
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Property status update successful:', data);
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       toast({
         title: "Success",
-        description: "Property status updated successfully.",
+        description: `Property ${data.status} successfully.`,
       });
       setRejectionProperty(null);
       setReactivateProperty(null);
@@ -98,6 +117,7 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
       setReactivationReason("");
     },
     onError: (error) => {
+      console.error('Property status update failed:', error);
       toast({
         title: "Error",
         description: "Failed to update property status: " + (error as Error).message,
@@ -106,31 +126,46 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
     },
   });
 
-  const handleApprove = (propertyId: string) => {
-    updatePropertyStatusMutation.mutate({ 
-      propertyId, 
-      status: "approved",
-      status_change_reason: "Property approved by admin"
-    });
+  const handleApprove = async (propertyId: string) => {
+    console.log('Approving property:', propertyId);
+    try {
+      await updatePropertyStatusMutation.mutateAsync({ 
+        propertyId, 
+        status: "approved",
+        status_change_reason: "Property approved by admin"
+      });
+    } catch (error) {
+      console.error('Failed to approve property:', error);
+    }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!rejectionProperty) return;
-    updatePropertyStatusMutation.mutate({
-      propertyId: rejectionProperty.id,
-      status: "rejected",
-      rejection_reason: rejectionReason,
-      status_change_reason: `Property rejected: ${rejectionReason}`
-    });
+    console.log('Rejecting property:', rejectionProperty.id);
+    try {
+      await updatePropertyStatusMutation.mutateAsync({
+        propertyId: rejectionProperty.id,
+        status: "rejected",
+        rejection_reason: rejectionReason,
+        status_change_reason: `Property rejected: ${rejectionReason}`
+      });
+    } catch (error) {
+      console.error('Failed to reject property:', error);
+    }
   };
 
-  const handleConfirmReactivate = () => {
+  const handleConfirmReactivate = async () => {
     if (!reactivateProperty) return;
-    updatePropertyStatusMutation.mutate({
-      propertyId: reactivateProperty.id,
-      status: "approved",
-      status_change_reason: `Property reactivated by admin: ${reactivationReason}`
-    });
+    console.log('Reactivating property:', reactivateProperty.id);
+    try {
+      await updatePropertyStatusMutation.mutateAsync({
+        propertyId: reactivateProperty.id,
+        status: "approved",
+        status_change_reason: `Property reactivated by admin: ${reactivationReason}`
+      });
+    } catch (error) {
+      console.error('Failed to reactivate property:', error);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -325,7 +360,7 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
                                     disabled={updatePropertyStatusMutation.isPending}
                                   >
                                     <Check className="mr-2 h-4 w-4" />
-                                    Approve
+                                    {updatePropertyStatusMutation.isPending ? 'Approving...' : 'Approve'}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={() => setRejectionProperty(property)}
