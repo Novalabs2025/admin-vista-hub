@@ -128,10 +128,12 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
       
       console.log('Update data:', updateData);
       
-      const { error } = await supabase
+      const { data: updatedData, error } = await supabase
         .from("properties")
         .update(updateData)
-        .eq("id", propertyId);
+        .eq("id", propertyId)
+        .select("*")
+        .single();
         
       if (error) {
         console.error('Supabase update error:', {
@@ -143,31 +145,43 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
         throw new Error(`Database error: ${error.message}`);
       }
       
-      console.log('Property updated successfully');
+      console.log('Property updated successfully:', updatedData);
       
-      // Return the updated property data for optimistic updates
-      return { 
-        id: propertyId, 
-        status,
-        agent_id: existingProperty.agent_id,
-        updated_at: updateData.updated_at
-      };
+      // Return the complete updated property data
+      return updatedData;
     },
-    onSuccess: (data) => {
-      console.log('Mutation success callback:', data);
+    onSuccess: (updatedProperty) => {
+      console.log('Mutation success callback:', updatedProperty);
       
-      // Invalidate multiple queries to ensure all views are updated
-      queryClient.invalidateQueries({ queryKey: ["properties"] });
-      queryClient.invalidateQueries({ queryKey: ["agent-properties"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      // Update the cache with the new property data
+      queryClient.setQueryData(["properties"], (oldData: Property[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map(property => 
+          property.id === updatedProperty.id ? updatedProperty : property
+        );
+      });
       
-      // Force refetch of properties
+      // Invalidate and refetch all related queries
+      const queriesToInvalidate = [
+        ["properties"],
+        ["agent-properties"], 
+        ["dashboard-stats"],
+        ["properties", updatedProperty.agent_id]
+      ];
+      
+      queriesToInvalidate.forEach(queryKey => {
+        queryClient.invalidateQueries({ queryKey });
+      });
+      
+      // Force immediate refetch
       queryClient.refetchQueries({ queryKey: ["properties"] });
       
       toast({
         title: "Success",
-        description: `Property ${data.status} successfully.`,
+        description: `Property ${updatedProperty.status} successfully.`,
       });
+      
+      // Clear modal states
       setRejectionProperty(null);
       setReactivateProperty(null);
       setRejectionReason("");
