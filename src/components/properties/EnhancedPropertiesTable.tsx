@@ -94,10 +94,10 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
         throw new Error('You must be logged in to update property status');
       }
       
-      // First check if the property exists
+      // First check if the property exists and get current status
       const { data: existingProperty, error: checkError } = await supabase
         .from("properties")
-        .select("id, status")
+        .select("id, status, agent_id")
         .eq("id", propertyId)
         .maybeSingle();
         
@@ -114,7 +114,8 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
       console.log('Property exists:', existingProperty);
       
       const updateData: any = { 
-        status
+        status,
+        updated_at: new Date().toISOString()
       };
       
       if (rejection_reason) {
@@ -143,11 +144,26 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
       }
       
       console.log('Property updated successfully');
-      return { id: propertyId, status };
+      
+      // Return the updated property data for optimistic updates
+      return { 
+        id: propertyId, 
+        status,
+        agent_id: existingProperty.agent_id,
+        updated_at: updateData.updated_at
+      };
     },
     onSuccess: (data) => {
       console.log('Mutation success callback:', data);
+      
+      // Invalidate multiple queries to ensure all views are updated
       queryClient.invalidateQueries({ queryKey: ["properties"] });
+      queryClient.invalidateQueries({ queryKey: ["agent-properties"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      
+      // Force refetch of properties
+      queryClient.refetchQueries({ queryKey: ["properties"] });
+      
       toast({
         title: "Success",
         description: `Property ${data.status} successfully.`,
