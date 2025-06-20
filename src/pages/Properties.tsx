@@ -1,5 +1,6 @@
+
 import Header from "@/components/dashboard/Header";
-import PropertiesTable from "@/components/properties/PropertiesTable";
+import EnhancedPropertiesTable from "@/components/properties/EnhancedPropertiesTable";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Plus, Home, DollarSign, MapPin, Eye } from "lucide-react";
+import { Search, Filter, Plus, Home, DollarSign, MapPin, Eye, RefreshCw } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAgentNames } from "@/hooks/useAgentNames";
 
@@ -24,7 +25,7 @@ const Properties = () => {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
 
-  const { data: properties, isLoading, error } = useQuery({
+  const { data: properties, isLoading, error, refetch } = useQuery({
     queryKey: ["properties"],
     queryFn: fetchProperties,
   });
@@ -106,31 +107,43 @@ const Properties = () => {
   return (
     <div className="flex flex-col flex-1 h-full">
       <Header />
-      <main className="flex-1 p-4 md:p-6 space-y-6 overflow-auto">
-        {/* Header Section */}
+      <main className="flex-1 p-3 md:p-6 space-y-4 md:space-y-6 overflow-auto">
+        {/* Responsive Header Section */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Properties</h1>
+            <p className="text-sm md:text-base text-muted-foreground">
               Manage and monitor all property listings
             </p>
           </div>
-          <Button className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add Property
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Property</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          </div>
         </div>
 
-        {/* Enhanced Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Responsive Stats Cards */}
+        <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
+              <Cardiff className="text-xs md:text-sm font-medium">Total Properties</CardTitle>
               <Home className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <div className="flex gap-1 mt-1">
+              <div className="text-xl md:text-2xl font-bold">{stats.total}</div>
+              <div className="flex flex-col sm:flex-row gap-1 mt-1">
                 <Badge variant="secondary" className="text-xs">{stats.approved} active</Badge>
                 <Badge variant="outline" className="text-xs">{stats.rented + stats.sold + stats.leased} sold/rented</Badge>
               </div>
@@ -139,11 +152,11 @@ const Properties = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">Total Value</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₦{(stats.totalValue / 1000000).toFixed(1)}M</div>
+              <div className="text-xl md:text-2xl font-bold">₦{(stats.totalValue / 1000000).toFixed(1)}M</div>
               <p className="text-xs text-muted-foreground">
                 Avg: ₦{(stats.avgPrice / 1000000).toFixed(1)}M
               </p>
@@ -152,18 +165,18 @@ const Properties = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Status Overview</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">Status Overview</CardTitle>
               <Badge variant="secondary" className="text-xs">
                 {stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0}% active
               </Badge>
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs md:text-sm">
                   <span>Pending:</span>
                   <span className="font-medium">{stats.pending}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs md:text-sm">
                   <span>Sold/Rented:</span>
                   <span className="font-medium">{stats.sold + stats.rented + stats.leased}</span>
                 </div>
@@ -173,14 +186,14 @@ const Properties = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Top Agents</CardTitle>
+              <CardTitle className="text-xs md:text-sm font-medium">Top Agents</CardTitle>
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
                 {stats.topAgents.slice(0, 2).map((agent, index) => (
-                  <div key={agent.id} className="flex justify-between text-sm">
-                    <span className="truncate">{agent.name}</span>
+                  <div key={agent.id} className="flex justify-between text-xs md:text-sm">
+                    <span className="truncate max-w-[80px] md:max-w-none">{agent.name}</span>
                     <span className="font-medium">{agent.count}</span>
                   </div>
                 ))}
@@ -192,16 +205,17 @@ const Properties = () => {
           </Card>
         </div>
 
-        {/* Enhanced Filters and Search */}
+        {/* Responsive Filters and Search */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Filter className="h-5 w-5" />
               Filters & Search
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="space-y-4">
+              {/* Search bar - full width on mobile */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -212,66 +226,69 @@ const Properties = () => {
                 />
               </div>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="rented">Rented</SelectItem>
-                  <SelectItem value="sold">Sold</SelectItem>
-                  <SelectItem value="leased">Leased</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Filters - stack on mobile, row on desktop */}
+              <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="rented">Rented</SelectItem>
+                    <SelectItem value="sold">Sold</SelectItem>
+                    <SelectItem value="leased">Leased</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Property Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="Apartment">Apartment</SelectItem>
-                  <SelectItem value="House">House</SelectItem>
-                  <SelectItem value="Condo">Condo</SelectItem>
-                  <SelectItem value="Townhouse">Townhouse</SelectItem>
-                  <SelectItem value="Land">Land</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Property Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="Apartment">Apartment</SelectItem>
+                    <SelectItem value="House">House</SelectItem>
+                    <SelectItem value="Condo">Condo</SelectItem>
+                    <SelectItem value="Townhouse">Townhouse</SelectItem>
+                    <SelectItem value="Land">Land</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="oldest">Oldest First</SelectItem>
-                  <SelectItem value="price-high">Price: High to Low</SelectItem>
-                  <SelectItem value="price-low">Price: Low to High</SelectItem>
-                  <SelectItem value="views">Most Viewed</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="price-low">Price: Low to High</SelectItem>
+                    <SelectItem value="views">Most Viewed</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {filteredAndSortedProperties.length} of {stats.total} properties
-                </span>
-                {(searchTerm || statusFilter !== "all" || typeFilter !== "all") && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearchTerm("");
-                      setStatusFilter("all");
-                      setTypeFilter("all");
-                      setSortBy("newest");
-                    }}
-                  >
-                    Clear
-                  </Button>
-                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs md:text-sm text-muted-foreground">
+                    {filteredAndSortedProperties.length} of {stats.total}
+                  </span>
+                  {(searchTerm || statusFilter !== "all" || typeFilter !== "all") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setStatusFilter("all");
+                        setTypeFilter("all");
+                        setSortBy("newest");
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -280,7 +297,7 @@ const Properties = () => {
         {/* Properties Table */}
         {isLoading ? (
           <div className="space-y-4">
-            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-20 md:h-24 w-full" />
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
@@ -295,7 +312,7 @@ const Properties = () => {
             </CardContent>
           </Card>
         ) : (
-          <PropertiesTable properties={filteredAndSortedProperties} />
+          <EnhancedPropertiesTable properties={filteredAndSortedProperties} />
         )}
       </main>
     </div>
