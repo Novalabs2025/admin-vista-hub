@@ -128,12 +128,13 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
       
       console.log('Update data:', updateData);
       
+      // Update the property and return the updated data
       const { data: updatedData, error } = await supabase
         .from("properties")
         .update(updateData)
         .eq("id", propertyId)
         .select("*")
-        .single();
+        .maybeSingle();
         
       if (error) {
         console.error('Supabase update error:', {
@@ -143,6 +144,11 @@ export default function EnhancedPropertiesTable({ properties }: EnhancedProperti
           code: error.code
         });
         throw new Error(`Database error: ${error.message}`);
+      }
+      
+      if (!updatedData) {
+        console.error('No data returned after update');
+        throw new Error('Property update completed but no data was returned');
       }
       
       console.log('Property updated successfully:', updatedData);
